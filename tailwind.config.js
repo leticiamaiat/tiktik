@@ -9,6 +9,8 @@ export default {
           dark: '#C96918',
           light: '#F0931A',
           sidebar: '#D4701A',
+          blue: '#1B3FCB',
+          navy: '#151A45',
         },
       },
     },

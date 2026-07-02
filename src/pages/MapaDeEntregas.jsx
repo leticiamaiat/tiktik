@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import Layout from '../components/Layout'
+import TikDetailModal from '../components/TikDetailModal'
 import { getTiks } from '../services/tiks'
 import { areas } from '../data/mockData'
 
@@ -14,6 +15,7 @@ export default function MapaDeEntregas() {
   const [selectedArea, setSelectedArea] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [selectedTik, setSelectedTik] = useState(null)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -80,7 +82,12 @@ export default function MapaDeEntregas() {
         {isLoaded ? (
           <GoogleMap mapContainerStyle={mapContainerStyle} center={defaultCenter} zoom={12} mapTypeId={mapType}>
             {tiks.map((tik) => (
-              <Marker key={tik.id} position={{ lat: tik.lat, lng: tik.lng }} title={tik.area} />
+              <Marker
+                key={tik.id}
+                position={{ lat: tik.lat, lng: tik.lng }}
+                title={tik.area}
+                onClick={() => setSelectedTik(tik)}
+              />
             ))}
           </GoogleMap>
         ) : (
@@ -89,6 +96,8 @@ export default function MapaDeEntregas() {
           </div>
         )}
       </div>
+
+      <TikDetailModal tik={selectedTik} onClose={() => setSelectedTik(null)} />
     </Layout>
   )
 }

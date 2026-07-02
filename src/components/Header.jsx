@@ -30,11 +30,17 @@ export default function Header({ onMenuToggle }) {
             <p className="text-xs text-gray-400 leading-none mt-0.5">{user.email}</p>
             <p className="text-xs text-tik-orange leading-none mt-0.5">{user.plan}</p>
           </div>
-          <img
-            src={user.avatar}
-            alt={user.name}
-            className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
-          />
+          {user.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt={user.name}
+              className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-tik-orange flex items-center justify-center border-2 border-gray-200">
+              <span className="text-white text-sm font-bold">{(user.name || user.email || '?')[0].toUpperCase()}</span>
+            </div>
+          )}
           <button
             onClick={onMenuToggle}
             className="flex flex-col gap-1 p-1 cursor-pointer"

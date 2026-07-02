@@ -212,10 +212,3 @@ export const dashboardData = {
     { name: 'Assistência', count: 2 },
   ],
 }
-
-export const collaborators = [
-  { id: 1, name: 'Maria Luz', role: 'Obras', org: 'Prefeitura de Sorocaba', avatar: 'https://i.pravatar.cc/150?img=5' },
-  { id: 2, name: 'Carlos Silva', role: 'Saúde', org: 'Prefeitura de Sorocaba', avatar: 'https://i.pravatar.cc/150?img=33' },
-  { id: 3, name: 'Ana Souza', role: 'Educação', org: 'Prefeitura de Sorocaba', avatar: 'https://i.pravatar.cc/150?img=9' },
-  { id: 4, name: 'Pedro Costa', role: 'Comunicação', org: 'Prefeitura de Sorocaba', avatar: 'https://i.pravatar.cc/150?img=15' },
-]

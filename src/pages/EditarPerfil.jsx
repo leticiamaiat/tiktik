@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadAvatar } from '../services/profiles'
+import { UFS, SECRETARIAS } from '../constants/locations'
+import { getMunicipios } from '../services/ibge'
 
 export default function EditarPerfil() {
   const { user, updateUser } = useAuth()
@@ -11,21 +14,35 @@ export default function EditarPerfil() {
   const [form, setForm] = useState({
     name: user?.name || '',
     secretaria: user?.secretaria || '',
-    prefeitura: user?.prefeitura || '',
-    uf: user?.uf || '',
+    municipality: user?.municipality || '',
+    state: user?.state || '',
     phone: user?.phone || '',
     cpf: user?.cpf || '',
     birthdate: user?.birthdate || '',
     gender: user?.gender || '',
     cep: user?.cep || '',
-    municipality: user?.municipality || '',
-    state: user?.state || '',
   })
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || null)
   const [saving, setSaving] = useState(false)
+  const [municipios, setMunicipios] = useState([])
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false)
 
   const handleChange = (field, value) => setForm((f) => ({ ...f, [field]: value }))
+
+  const handleStateChange = (uf) => setForm((f) => ({ ...f, state: uf, municipality: '' }))
+
+  useEffect(() => {
+    if (!form.state) {
+      setMunicipios([])
+      return
+    }
+    setLoadingMunicipios(true)
+    getMunicipios(form.state)
+      .then(setMunicipios)
+      .catch(() => toast.error('Não foi possível carregar os municípios. Tente novamente.'))
+      .finally(() => setLoadingMunicipios(false))
+  }, [form.state])
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0]
@@ -42,10 +59,12 @@ export default function EditarPerfil() {
       if (avatarFile) {
         avatar_url = await uploadAvatar(user.id, avatarFile)
       }
-      await updateUser({ ...form, avatar_url })
+      await updateUser({ ...form, birthdate: form.birthdate || null, avatar_url })
+      toast.success('Perfil atualizado!')
       navigate('/meus-tiks')
     } catch (err) {
       console.error(err)
+      toast.error(err.message || 'Erro ao salvar o perfil')
     } finally {
       setSaving(false)
     }
@@ -91,19 +110,40 @@ export default function EditarPerfil() {
             <div className="p-4 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Secretaria</label>
-                <input type="text" value={form.secretaria} onChange={(e) => handleChange('secretaria', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                <select value={form.secretaria} onChange={(e) => handleChange('secretaria', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">Selecione a secretaria</option>
+                  {SECRETARIAS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-3">
+                <div className="w-28">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">UF:</label>
+                  <select value={form.state} onChange={(e) => handleStateChange(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                    <option value="">UF</option>
+                    {UFS.map((uf) => (
+                      <option key={uf.sigla} value={uf.sigla}>{uf.sigla}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1">Prefeitura do Município de:</label>
-                  <input type="text" value={form.prefeitura} onChange={(e) => handleChange('prefeitura', e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div className="w-24">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">UF:</label>
-                  <input type="text" value={form.uf} onChange={(e) => handleChange('uf', e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" maxLength={2} />
+                  <select value={form.municipality} onChange={(e) => handleChange('municipality', e.target.value)}
+                    disabled={!form.state || loadingMunicipios}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                    <option value="">
+                      {!form.state ? 'Selecione a UF primeiro' : loadingMunicipios ? 'Carregando...' : 'Selecione o município'}
+                    </option>
+                    {form.municipality && !municipios.includes(form.municipality) && (
+                      <option value={form.municipality}>{form.municipality}</option>
+                    )}
+                    {municipios.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

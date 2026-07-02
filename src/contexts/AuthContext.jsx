@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { getProfile, updateProfile } from '../services/profiles'
-import { signIn, signOut } from '../services/auth'
+import { getProfile, updateProfile, createProfile } from '../services/profiles'
+import { signIn, signOut, signUp } from '../services/auth'
 
 const AuthContext = createContext(null)
 
@@ -44,6 +44,17 @@ export function AuthProvider({ children }) {
     return data
   }
 
+  const register = async (email, password, name) => {
+    const data = await signUp(email, password, name)
+    if (data.user) {
+      await createProfile(data.user.id, { name, email })
+    }
+    if (data.session) {
+      await loadProfile(data.user)
+    }
+    return data
+  }
+
   const logout = async () => {
     await signOut()
     setUser(null)
@@ -51,13 +62,12 @@ export function AuthProvider({ children }) {
 
   const updateUser = async (updates) => {
     if (!user?.id) return
-    const { avatar_url, ...profileUpdates } = updates
-    const updated = await updateProfile(user.id, profileUpdates)
+    const updated = await updateProfile(user.id, updates)
     setUser((prev) => ({ ...prev, ...updated, firstName: (updated.name || prev.name || '').split(' ')[0] }))
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   )

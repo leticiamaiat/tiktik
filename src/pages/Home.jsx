@@ -4,6 +4,7 @@ import { X, Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import TikCard from '../components/TikCard'
+import TikDetailModal from '../components/TikDetailModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, createTik } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
@@ -24,6 +25,7 @@ export default function Home() {
   const [locationName, setLocationName] = useState('Sorocaba, SP')
   const [submitting, setSubmitting] = useState(false)
   const [igConn, setIgConn] = useState(null)
+  const [selectedTik, setSelectedTik] = useState(null)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -58,6 +60,10 @@ export default function Home() {
 
   const handleSubmit = async () => {
     if (!form.area || submitting) return
+    if (user?.autorizado === false) {
+      toast.error('Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.')
+      return
+    }
     setSubmitting(true)
     try {
       const newTik = await createTik({
@@ -126,7 +132,12 @@ export default function Home() {
             mapTypeId={mapType}
           >
             {tiks.map((tik) => (
-              <Marker key={tik.id} position={{ lat: tik.lat, lng: tik.lng }} title={tik.area} />
+              <Marker
+                key={tik.id}
+                position={{ lat: tik.lat, lng: tik.lng }}
+                title={tik.area}
+                onClick={() => setSelectedTik(tik)}
+              />
             ))}
           </GoogleMap>
         ) : (
@@ -161,10 +172,12 @@ export default function Home() {
       {tiks.length > 0 && (
         <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-3">
           {tiks.map((tik) => (
-            <TikCard key={tik.id} tik={tik} />
+            <TikCard key={tik.id} tik={tik} onView={setSelectedTik} />
           ))}
         </div>
       )}
+
+      <TikDetailModal tik={selectedTik} onClose={() => setSelectedTik(null)} />
 
       {/* Modal */}
       {showModal && (

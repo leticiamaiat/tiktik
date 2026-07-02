@@ -1,9 +1,13 @@
 export default function TikCard({ tik, onView }) {
+  const createdAt = tik.created_at ? new Date(tik.created_at) : null
+  const date = createdAt ? createdAt.toLocaleDateString('pt-BR') : ''
+  const time = createdAt ? createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+
   return (
     <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3">
       <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-200">
-        {tik.image ? (
-          <img src={tik.image} alt={tik.area} className="w-full h-full object-cover" />
+        {tik.image_url ? (
+          <img src={tik.image_url} alt={tik.area} className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center text-white text-xs font-bold text-center p-1"
@@ -19,7 +23,7 @@ export default function TikCard({ tik, onView }) {
         <p className="text-gray-500 text-xs truncate">{tik.description}</p>
         <p className="text-gray-400 text-xs mt-0.5">
           <span className="inline-block w-3 h-3 mr-1">📍</span>
-          {tik.date}, {tik.time} · {tik.location}
+          {date}{time ? `, ${time}` : ''} · {tik.location}
         </p>
       </div>
 

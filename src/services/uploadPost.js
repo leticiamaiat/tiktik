@@ -7,6 +7,13 @@ function apiHeaders() {
   return { Authorization: `Apikey ${API_KEY}`, 'Content-Type': 'application/json' }
 }
 
+// The connect-JWT (from generate-jwt's access_url) has to be kept around client-side
+// so validate-jwt can be called later with it — upload-post.com's API doesn't offer
+// a way to look this up by username again.
+function jwtStorageKey(username) {
+  return `tik_ig_jwt_${username}`
+}
+
 // Normalize municipality + state into a safe Upload-post profile username
 // e.g. "São Paulo", "SP" → "sao_paulo_sp"
 function profileId(municipality, state) {
@@ -99,26 +106,35 @@ export async function generateInstagramConnectionUrl(municipality, state) {
   if (!data.success || !data.access_url) {
     throw new Error(data.message || 'Erro ao gerar link de conexão')
   }
+
+  // access_url looks like https://app.upload-post.com/connect?token=<jwt> — validate-jwt
+  // needs that same token later, so stash it against this profile's username.
+  const token = new URL(data.access_url).searchParams.get('token')
+  if (token) localStorage.setItem(jwtStorageKey(username), token)
+
   return { url: data.access_url, username }
 }
 
 export async function verifyAndSaveConnection(municipality, state, userId) {
   const username = profileId(municipality, state)
 
+  const token = localStorage.getItem(jwtStorageKey(username))
+  if (!token) throw new Error('Clique em CONECTAR antes de verificar.')
+
   const res = await fetch(`${BASE}/uploadposts/users/validate-jwt`, {
-    method: 'POST',
-    headers: apiHeaders(),
-    body: JSON.stringify({ username }),
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
   })
   const data = await res.json()
+  if (!data.success) return null
 
-  const igConn = (data.profile?.social_connections || []).find(
-    (c) => c.platform === 'instagram' && c.connected && c.auth_status === 'valid'
-  )
-  if (!igConn) return null
+  const igAccount = data.profile?.social_accounts?.instagram
+  if (!igAccount || typeof igAccount !== 'object') return null
 
-  await saveConnection(municipality, state, igConn.username, userId, username)
-  return { ig_username: igConn.username, upload_post_username: username }
+  const igUsername = igAccount.username || igAccount.display_name || username
+  localStorage.removeItem(jwtStorageKey(username))
+  await saveConnection(municipality, state, igUsername, userId, username)
+  return { ig_username: igUsername, upload_post_username: username }
 }
 
 // --- Publish ---
@@ -132,11 +148,10 @@ export async function publishToInstagram(municipality, state, imageUrl, caption)
   const body = new FormData()
   body.append('user', conn.upload_post_username)
   body.append('platform[]', 'instagram')
-  body.append('video', imageUrl)
-  body.append('description', caption)
-  body.append('media_type', 'FEED')
+  body.append('photos[]', imageUrl)
+  body.append('title', caption)
 
-  const res = await fetch(`${BASE}/upload`, {
+  const res = await fetch(`${BASE}/upload_photos`, {
     method: 'POST',
     headers: { Authorization: `Apikey ${API_KEY}` },
     body,

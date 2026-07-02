@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import TikCard from '../components/TikCard'
+import TikDetailModal from '../components/TikDetailModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks } from '../services/tiks'
 
@@ -10,6 +11,7 @@ export default function MeusTiks() {
   const navigate = useNavigate()
   const [tiks, setTiks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedTik, setSelectedTik] = useState(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -61,10 +63,12 @@ export default function MeusTiks() {
 
         <div className="flex flex-col gap-3">
           {tiks.map((tik) => (
-            <TikCard key={tik.id} tik={tik} />
+            <TikCard key={tik.id} tik={tik} onView={setSelectedTik} />
           ))}
         </div>
       </div>
+
+      <TikDetailModal tik={selectedTik} onClose={() => setSelectedTik(null)} />
     </Layout>
   )
 }

@@ -5,7 +5,7 @@ export async function getTiks({ area, startDate, endDate, userId } = {}) {
     .from('tiks')
     .select(`
       *,
-      profiles (id, name, avatar_url, secretaria, municipality, state),
+      profiles (id, name, avatar_url, secretaria, municipality, state, phone),
       likes (id, user_id)
     `)
     .order('created_at', { ascending: false })
@@ -16,6 +16,20 @@ export async function getTiks({ area, startDate, endDate, userId } = {}) {
   if (endDate) query = query.lte('created_at', endDate + 'T23:59:59')
 
   const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+export async function getTik(id) {
+  const { data, error } = await supabase
+    .from('tiks')
+    .select(`
+      *,
+      profiles (id, name, avatar_url, secretaria, municipality, state, phone),
+      likes (id, user_id)
+    `)
+    .eq('id', id)
+    .single()
   if (error) throw error
   return data
 }
@@ -39,7 +53,7 @@ export async function createTik({ userId, area, description, lat, lng, location,
     .insert({ user_id: userId, area, description, lat, lng, location, image_url })
     .select(`
       *,
-      profiles (id, name, avatar_url, secretaria, municipality, state),
+      profiles (id, name, avatar_url, secretaria, municipality, state, phone),
       likes (id, user_id)
     `)
     .single()

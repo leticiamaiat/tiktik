@@ -84,6 +84,15 @@ export default function TermosDeUso() {
               exclusivamente para fins de prestação dos serviços da plataforma.
             </p>
           </Section>
+          <Section title="6 Regras de Uso e Conduta">  
+            <li>a) Apenas usuários autorizados pela entidade gestora poderão acessar a plataforma mediante credenciais individuais e intransferíveis;</li>
+            <li>b) Os dados inseridos na plataforma são de responsabilidade do ente público e de seus usuários cadastrados;</li>
+            <li>c) É vedado o uso da plataforma para finalidades que não estejam relacionadas à gestão pública e ao escopo do contrato firmado com o TIK;</li>
+            <li>d) Publicações, documentos ou comentários que contenham linguagem ofensiva, preconceituosa, ilegal ou que infrinjam direitos de terceiros serão removidos, e os responsáveis estarão sujeitos às medidas cabíveis;</li>
+
+            <li>e) O usuário compromete-se a utilizar a plataforma com ética, responsabilidade e em conformidade com a legislação brasileira, especialmente a Lei Geral de Proteção de Dados (LGPD).
+           </li>
+</Section>
         </div>
       </div>
     </Layout>
