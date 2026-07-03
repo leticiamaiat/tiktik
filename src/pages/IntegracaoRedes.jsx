@@ -23,7 +23,10 @@ export default function IntegracaoRedes() {
   const municipalityLabel = municipality && state ? `${municipality} - ${state}` : '...'
 
   useEffect(() => {
-    if (!municipality || !state) return
+    if (!municipality || !state) {
+      setStatus('idle')
+      return
+    }
 
     getMunicipalityConnection(municipality, state)
       .then((data) => {

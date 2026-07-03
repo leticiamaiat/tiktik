@@ -32,8 +32,24 @@ export function AuthProvider({ children }) {
         ...profile,
         firstName: (profile.name || authUser.email).split(' ')[0],
       })
-    } catch {
-      setUser({ id: authUser.id, email: authUser.email, firstName: authUser.email.split('@')[0] })
+    } catch (err) {
+      console.error('getProfile falhou, tentando criar/recuperar perfil:', err)
+      // Sem confirmação de email o cadastro não pôde criar o perfil ainda
+      // (RLS exige uma sessão autenticada). Agora que há sessão, cria aqui
+      // usando os dados salvos no metadata do usuário durante o signUp.
+      try {
+        const { name, email, ...extra } = authUser.user_metadata || {}
+        const profile = await createProfile(authUser.id, { name, ...extra })
+        setUser({
+          id: authUser.id,
+          email: authUser.email,
+          ...profile,
+          firstName: (profile.name || authUser.email).split(' ')[0],
+        })
+      } catch (err2) {
+        console.error('createProfile também falhou, perfil ficará incompleto (sem municipality/state):', err2)
+        setUser({ id: authUser.id, email: authUser.email, firstName: authUser.email.split('@')[0] })
+      }
     } finally {
       setLoading(false)
     }
@@ -44,12 +60,10 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  const register = async (email, password, name) => {
-    const data = await signUp(email, password, name)
-    if (data.user) {
-      await createProfile(data.user.id, { name, email })
-    }
+  const register = async (email, password, name, extra = {}) => {
+    const data = await signUp(email, password, name, extra)
     if (data.session) {
+      await createProfile(data.user.id, { name, ...extra })
       await loadProfile(data.user)
     }
     return data

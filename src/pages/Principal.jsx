@@ -5,6 +5,7 @@ import {
   Eye, MapPin, Shield, Megaphone, FileText, Smartphone,
   Camera, MonitorDown, Share2, CheckCircle2, ChevronDown, Send, Image,
 } from 'lucide-react'
+import logo from '../assets/logo.jpeg'
 
 const NAV_LINKS = [
   { label: 'Home', href: '#topo' },
@@ -409,7 +410,7 @@ export default function Principal() {
       {/* Footer */}
       <footer className="bg-tik-navy py-8">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <TikLogo dark />
+          <TikLogo />
           <p className="text-gray-400 text-sm">tik - Todos os direitos reservados</p>
           <p className="text-gray-400 text-sm">Um produto: IVI</p>
         </div>
@@ -418,20 +419,8 @@ export default function Principal() {
   )
 }
 
-function TikLogo({ dark = false }) {
-  const base = dark ? 'text-white' : 'text-gray-800'
-  return (
-    <span className="text-2xl font-black tracking-tight select-none">
-      <span className={base}>ti</span>
-      <span className={`relative inline-block ${base}`}>
-        k
-        <span
-          className="absolute -top-1 left-0 text-tik-orange font-black"
-          style={{ transform: 'rotate(-15deg)', fontSize: '1.1em' }}
-        >✓</span>
-      </span>
-    </span>
-  )
+function TikLogo() {
+  return <img src={logo} alt="Tik" className="h-8 w-auto select-none" />
 }
 
 function PhotoBlock({ ratio, accent }) {

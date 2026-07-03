@@ -31,8 +31,7 @@ export async function getMunicipalityConnection(municipality, state) {
   const { data } = await supabase
     .from('municipality_integrations')
     .select('*')
-    .eq('municipality', municipality)
-    .eq('state', state)
+    .eq('upload_post_username', profileId(municipality, state))
     .eq('platform', 'instagram')
     .maybeSingle()
   return data // null if not connected
@@ -60,8 +59,7 @@ export async function deleteMunicipalityConnection(municipality, state) {
   const { error } = await supabase
     .from('municipality_integrations')
     .delete()
-    .eq('municipality', municipality)
-    .eq('state', state)
+    .eq('upload_post_username', profileId(municipality, state))
     .eq('platform', 'instagram')
   if (error) throw error
 }

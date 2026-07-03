@@ -18,7 +18,10 @@ export default function Colaboradores() {
   const isAdmin = !!user?.is_admin
 
   const load = useCallback(() => {
-    if (!municipality) return
+    if (!municipality) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     listProfiles({
       municipality,
@@ -128,7 +131,12 @@ export default function Colaboradores() {
           </div>
 
           {loading && <p className="text-center text-gray-400 text-sm py-8">Carregando colaboradores...</p>}
-          {!loading && profiles.length === 0 && (
+          {!loading && !municipality && (
+            <p className="text-center text-gray-400 text-sm py-8">
+              Seu perfil está sem município definido. Atualize seu perfil para ver os colaboradores.
+            </p>
+          )}
+          {!loading && municipality && profiles.length === 0 && (
             <p className="text-center text-gray-400 text-sm py-8">Nenhum colaborador encontrado.</p>
           )}
 
