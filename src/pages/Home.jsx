@@ -106,6 +106,7 @@ export default function Home() {
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
 
   const userTikCount = tiks.filter((t) => t.user_id === user?.id).length
+  const isBlocked = user?.autorizado === false
 
   return (
     <Layout>
@@ -148,7 +149,12 @@ export default function Home() {
 
         {/* Fazer um TIK */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-          <button onClick={handleOpenModal} className="btn-orange px-8 py-3 text-sm font-bold tracking-widest uppercase shadow-lg">
+          <button
+            onClick={handleOpenModal}
+            disabled={isBlocked}
+            title={isBlocked ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.' : undefined}
+            className="btn-orange px-8 py-3 text-sm font-bold tracking-widest uppercase shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Fazer um TIK
           </button>
         </div>
@@ -161,7 +167,9 @@ export default function Home() {
           </div>
           <button
             onClick={handleOpenModal}
-            className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white text-xs font-bold shadow-md bg-tik-orange"
+            disabled={isBlocked}
+            title={isBlocked ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.' : undefined}
+            className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white text-xs font-bold shadow-md bg-tik-orange disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-[9px] text-center leading-tight">Fazer<br/>Tik</span>
           </button>
