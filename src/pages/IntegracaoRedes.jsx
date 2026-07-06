@@ -50,9 +50,10 @@ export default function IntegracaoRedes() {
     setStatus('generating')
     try {
       const { url } = await generateInstagramConnectionUrl(municipality, state)
-      window.open(url, '_blank', 'noopener')
-      toast('Conecte o Instagram na aba que abriu e depois clique em VERIFICAR.', { duration: 7000 })
-      setStatus('idle')
+      // Navigate the same tab instead of window.open — opening a new tab after an
+      // await loses the user-gesture context and gets silently popup-blocked in
+      // most browsers. redirect_url already brings the user back here afterwards.
+      window.location.href = url
     } catch (err) {
       toast.error(err.message || 'Erro ao gerar link de conexão')
       setStatus('idle')
@@ -198,8 +199,8 @@ export default function IntegracaoRedes() {
 
             {!igConnected && status !== 'loading' && (
               <p className="mt-3 pt-3 border-t border-pink-100 text-xs text-gray-500">
-                Clique em <strong>CONECTAR</strong> para abrir a página de autorização em nova aba.
-                Após conectar, clique em <strong>VERIFICAR</strong> para confirmar.
+                Clique em <strong>CONECTAR</strong> para ir até a página de autorização. Após conectar,
+                você volta automaticamente para cá — se não confirmar sozinho, clique em <strong>VERIFICAR</strong>.
               </p>
             )}
           </div>
