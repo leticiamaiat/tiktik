@@ -7,6 +7,17 @@ function apiHeaders() {
   return { Authorization: `Apikey ${API_KEY}`, 'Content-Type': 'application/json' }
 }
 
+// The upload-post API doesn't always return JSON (e.g. a deleted/invalid
+// profile or token can produce a plain-text or HTML error response), so
+// callers must never assume res.json() will succeed.
+async function safeJson(res) {
+  try {
+    return await res.json()
+  } catch {
+    return { success: false }
+  }
+}
+
 // The connect-JWT (from generate-jwt's access_url) has to be kept around client-side
 // so validate-jwt can be called later with it — upload-post.com's API doesn't offer
 // a way to look this up by username again.
@@ -62,21 +73,25 @@ export async function deleteMunicipalityConnection(municipality, state) {
     .eq('upload_post_username', profileId(municipality, state))
     .eq('platform', 'instagram')
   if (error) throw error
+
+  // Drop any leftover connect-JWT so a stray VERIFICAR click can't reuse a
+  // token tied to a connection that no longer exists.
+  localStorage.removeItem(jwtStorageKey(profileId(municipality, state)))
 }
 
 // --- Upload-post API ---
 
+// Best-effort: just makes sure a profile exists before generate-jwt runs.
+// Whether it already existed (409, or any other "already there" shape the
+// API uses) or was just created doesn't matter here — if profile creation
+// is genuinely broken, the generate-jwt call right after will fail with its
+// own clear error, so this never needs to throw.
 async function ensureProfile(username) {
-  const res = await fetch(`${BASE}/uploadposts/users`, {
+  await fetch(`${BASE}/uploadposts/users`, {
     method: 'POST',
     headers: apiHeaders(),
     body: JSON.stringify({ username }),
   })
-  const data = await res.json()
-  // 409 = já existe, tudo certo
-  if (!data.success && res.status !== 409) {
-    throw new Error(data.message || 'Erro ao criar perfil no Upload-post')
-  }
 }
 
 export async function generateInstagramConnectionUrl(municipality, state) {
@@ -100,9 +115,9 @@ export async function generateInstagramConnectionUrl(municipality, state) {
       language: 'pt',
     }),
   })
-  const data = await res.json()
+  const data = await safeJson(res)
   if (!data.success || !data.access_url) {
-    throw new Error(data.message || 'Erro ao gerar link de conexão')
+    throw new Error('Erro ao gerar link de conexão. Tente novamente em instantes.')
   }
 
   // access_url looks like https://app.upload-post.com/connect?token=<jwt> — validate-jwt
@@ -123,8 +138,14 @@ export async function verifyAndSaveConnection(municipality, state, userId) {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}` },
   })
-  const data = await res.json()
-  if (!data.success) return null
+  const data = await safeJson(res)
+  // A token tied to a profile that was deleted/disconnected (either here or
+  // directly on upload-post) won't validate — treat that as "not connected
+  // yet" instead of surfacing a raw network/parse error to the user.
+  if (!res.ok || !data.success) {
+    localStorage.removeItem(jwtStorageKey(username))
+    return null
+  }
 
   const igAccount = data.profile?.social_accounts?.instagram
   if (!igAccount || typeof igAccount !== 'object') return null
@@ -154,9 +175,9 @@ export async function publishToInstagram(municipality, state, imageUrl, caption)
     headers: { Authorization: `Apikey ${API_KEY}` },
     body,
   })
-  const result = await res.json()
-  if (!result.success) {
-    throw new Error(result.message || result.error || 'Falha ao publicar no Instagram')
+  const result = await safeJson(res)
+  if (!res.ok || !result.success) {
+    throw new Error('Falha ao publicar no Instagram. Verifique se a conexão ainda está ativa.')
   }
   return result
 }
