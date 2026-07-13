@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const menuItems = [
-  { label: 'Fazer um tik', path: '/' },
+  { label: 'Fazer um tik', path: '/home' },
   { label: 'Mapa de entregas', path: '/mapa-de-entregas' },
   { label: 'Dashboard', path: '/dashboard' },
   { label: 'Meus tiks', path: '/meus-tiks' },

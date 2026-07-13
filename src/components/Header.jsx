@@ -1,6 +1,6 @@
 import { Menu } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import logo from '../assets/logo.jpeg'
+import logo from '../assets/00_logo_2.png'
 
 export default function Header({ onMenuToggle }) {
   const { user } = useAuth()

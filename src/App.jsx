@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import Principal from './pages/Principal'
@@ -16,11 +16,6 @@ import IntegracaoRedes from './pages/IntegracaoRedes'
 import EditarPerfil from './pages/EditarPerfil'
 import TermosDeUso from './pages/TermosDeUso'
 
-function RootRoute() {
-  const { user } = useAuth()
-  return user ? <Home /> : <Principal />
-}
-
 export default function App() {
   return (
     <AuthProvider>
@@ -30,7 +25,8 @@ export default function App() {
           <Route path="/principal" element={<Principal />} />
           <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={<RootRoute />} />
+          <Route path="/" element={<Principal />} />
+          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/mapa-de-entregas" element={<ProtectedRoute><MapaDeEntregas /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/meus-tiks" element={<ProtectedRoute><MeusTiks /></ProtectedRoute>} />

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { UFS, SECRETARIAS } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
-import logo from '../assets/logo.jpeg'
+import logo from '../assets/00_logo_2.png'
 
 const EMPTY_SIGNUP = {
   secretaria: '',
@@ -66,7 +66,7 @@ export default function Login() {
           birthdate: signup.birthdate || null,
         })
         if (data.session) {
-          navigate('/')
+          navigate('/home')
         } else {
           setInfo('Conta criada! Verifique seu email para confirmar o cadastro antes de entrar.')
           setMode('login')

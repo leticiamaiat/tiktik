@@ -1,11 +1,25 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import {
-  Eye, MapPin, Shield, Megaphone, FileText, Smartphone,
-  Camera, MonitorDown, Share2, CheckCircle2, ChevronDown, Send, Image,
-} from 'lucide-react'
-import logo from '../assets/logo.jpeg'
+import { CheckCircle2, ChevronDown, Send } from 'lucide-react'
+import logoNavy from '../assets/00_logo_2.png'
+import logoWhite from '../assets/00_logo_1.png'
+import heroImg from '../assets/tik_img_01.png'
+import valorizeImg from '../assets/tik_img_02.png'
+import icon03_1 from '../assets/tik_img_03-1.png'
+import icon03_2 from '../assets/tik_img_03-2.png'
+import icon03_3 from '../assets/tik_img_03-3.png'
+import icon03_4 from '../assets/tik_img_03-4.png'
+import icon03_5 from '../assets/tik_img_03-5.png'
+import icon03_6 from '../assets/tik_img_03-6.png'
+import step04_1 from '../assets/tik_img_04-1.png'
+import step04_2 from '../assets/tik_img_04-2.png'
+import step04_3 from '../assets/tik_img_04-3.png'
+import step04_5 from '../assets/tik_img_04-5.png'
+import audience05_1 from '../assets/tik_img_05-1.jpg'
+import audience05_2 from '../assets/tik_img_05-2.jpg'
+import audience05_3 from '../assets/tik_img_05-3.jpg'
+import contatoImg from '../assets/tik_img_07.png'
 
 const NAV_LINKS = [
   { label: 'Home', href: '#topo' },
@@ -17,25 +31,25 @@ const NAV_LINKS = [
 ]
 
 const FEATURES = [
-  { icon: Eye, title: 'Visibilidade das entregas', text: 'Mostre cada entrega realizada, valorizando o trabalho diário da gestão.' },
-  { icon: MapPin, title: 'Aproximação com o cidadão', text: 'Aproxime o cidadão do que está sendo feito, com informações atualizadas.' },
-  { icon: Shield, title: 'Centralização de dados', text: 'Centralize entregas e evite perda ou dispersão de informações.' },
-  { icon: Megaphone, title: 'Comunicação transparente', text: 'Amplie a comunicação pública com transparência e credibilidade.' },
-  { icon: FileText, title: 'Prestação de contas facilitada', text: 'Facilite a prestação de contas, com registros e relatórios acessíveis.' },
-  { icon: Smartphone, title: 'Operação digital simples', text: 'Opere tudo de forma digital, simples, intuitiva e segura.' },
+  { icon: icon03_1, title: 'Visibilidade das entregas', text: 'Mostre cada entrega realizada, valorizando o trabalho diário da gestão.' },
+  { icon: icon03_2, title: 'Aproximação com o cidadão', text: 'Aproxime o cidadão do que está sendo feito, com informações atualizadas.' },
+  { icon: icon03_3, title: 'Centralização de dados', text: 'Centralize entregas e evite perda ou dispersão de informações.' },
+  { icon: icon03_4, title: 'Comunicação transparente', text: 'Amplie a comunicação pública com transparência e credibilidade.' },
+  { icon: icon03_5, title: 'Prestação de contas facilitada', text: 'Facilite a prestação de contas, com registros e relatórios acessíveis.' },
+  { icon: icon03_6, title: 'Operação digital simples', text: 'Opere tudo de forma digital, simples, intuitiva e segura.' },
 ]
 
 const STEPS = [
-  { icon: Camera, number: 1, title: 'Registre', text: 'Fotos, textos e local são registrados no TIK', color: 'blue' },
-  { icon: MonitorDown, number: 2, title: 'A Tik processa imediatamente', text: 'A ação é enviada em segundos para os canais oficiais', color: 'blue' },
-  { icon: Share2, number: 3, title: 'Divulgação imediata', text: 'Site oficial, redes sociais e mapa de entregas são atualizados.', color: 'blue' },
-  { icon: CheckCircle2, number: 4, title: 'Resultado em escala', text: 'Cada ação se multiplica e chega aonde precisa chegar: No cidadão da sua cidade', color: 'orange' },
+  { number: 1, title: 'Registre', image: step04_1 },
+  { number: 2, title: 'A Tik processa imediatamente', image: step04_2 },
+  { number: 3, title: 'Divulgação imediata', image: step04_3 },
+  { number: 4, title: 'Resultado em escala', image: step04_5 },
 ]
 
 const AUDIENCES = [
-  { title: 'Gestores Públicos', text: 'Uma plataforma pensada para quem executa, para quem gere e para quem vive a cidade, que conecta entregas, dados e transparência em um só lugar.' },
-  { title: 'Equipes técnicas e operacionais', text: 'Registre ações no campo, valide com evidências e organize informações sem retrabalho. Menos planilhas, menos informações soltas, mais controle e rastreabilidade.' },
-  { title: 'Cidadãos', text: 'Veja o que está sendo feito, onde e quando. Acompanhe obras, serviços e melhorias com clareza, mapas e atualizações em tempo real.' },
+  { title: 'Gestores Públicos', text: 'Uma plataforma pensada para quem executa, para quem gere e para quem vive a cidade, que conecta entregas, dados e transparência em um só lugar.', image: audience05_1 },
+  { title: 'Equipes técnicas e operacionais', text: 'Registre ações no campo, valide com evidências e organize informações sem retrabalho. Menos planilhas, menos informações soltas, mais controle e rastreabilidade.', image: audience05_2 },
+  { title: 'Cidadãos', text: 'Veja o que está sendo feito, onde e quando. Acompanhe obras, serviços e melhorias com clareza, mapas e atualizações em tempo real.', image: audience05_3 },
 ]
 
 const PLANS = [
@@ -136,7 +150,7 @@ export default function Principal() {
               </a>
             </div>
           </div>
-          <PhotoBlock ratio="aspect-[4/3]" accent="blue" />
+          <img src={heroImg} alt="Trabalhador registrando uma entrega com o celular" className="w-full h-auto rounded-2xl" />
         </div>
       </section>
 
@@ -144,7 +158,7 @@ export default function Principal() {
       <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
-            <PhotoBlock ratio="aspect-[4/3]" accent="orange" />
+            <img src={valorizeImg} alt="Cidadã vendo no Instagram uma entrega publicada" className="w-full h-auto rounded-2xl" />
           </div>
           <div className="order-1 md:order-2">
             <h2 className="text-3xl md:text-4xl font-black text-gray-800 leading-tight">Valorize o que é feito.</h2>
@@ -173,11 +187,9 @@ export default function Principal() {
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
+            {FEATURES.map(({ icon, title, text }) => (
               <div key={title} className="bg-white rounded-2xl shadow-sm p-6">
-                <div className="w-11 h-11 rounded-full bg-tik-orange/15 flex items-center justify-center mb-4">
-                  <Icon size={20} className="text-tik-orange" />
-                </div>
+                <img src={icon} alt="" className="w-11 h-11 rounded-xl mb-4" />
                 <h3 className="font-bold text-gray-800 mb-1">{title}</h3>
                 <p className="text-sm text-gray-600">{text}</p>
               </div>
@@ -203,23 +215,12 @@ export default function Principal() {
           </div>
 
           <div className="space-y-8">
-            {STEPS.map(({ icon: Icon, number, title, text, color }, i) => (
-              <div key={number} className="flex gap-5 items-start relative">
+            {STEPS.map(({ number, title, image }, i) => (
+              <div key={number} className={`relative max-w-sm ${i % 2 === 1 ? 'md:ml-auto' : ''}`}>
                 {i < STEPS.length - 1 && (
-                  <span className="absolute left-6 top-14 bottom-[-2rem] w-px border-l-2 border-dashed border-gray-300" />
+                  <span className="absolute left-6 -bottom-8 w-px h-8 border-l-2 border-dashed border-gray-300" />
                 )}
-                <div
-                  className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
-                    color === 'orange' ? 'bg-tik-orange' : 'bg-tik-blue'
-                  }`}
-                >
-                  <Icon size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-400 mb-0.5">Passo {number}</p>
-                  <h3 className={`font-bold ${color === 'orange' ? 'text-tik-orange' : 'text-tik-blue'}`}>{title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{text}</p>
-                </div>
+                <img src={image} alt={title} className="w-full h-auto" />
               </div>
             ))}
           </div>
@@ -237,8 +238,9 @@ export default function Principal() {
           </p>
 
           <div className="grid sm:grid-cols-3 gap-6 mt-10">
-            {AUDIENCES.map(({ title, text }) => (
-              <div key={title} className="relative rounded-2xl overflow-hidden aspect-[3/4] bg-gradient-to-br from-tik-navy to-tik-blue">
+            {AUDIENCES.map(({ title, text, image }) => (
+              <div key={title} className="relative rounded-2xl overflow-hidden aspect-[3/4]">
+                <img src={image} alt={title} className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-tik-navy/95 via-tik-navy/40 to-transparent" />
                 <div className="absolute bottom-0 p-5">
                   <h3 className="text-tik-orange font-bold text-lg mb-1">{title}</h3>
@@ -353,6 +355,7 @@ export default function Principal() {
       <section id="contato" className="bg-tik-orange py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
           <div>
+            <img src={contatoImg} alt="Homem sorrindo mostrando o app tik no celular" className="w-full max-w-sm h-auto mb-6" />
             <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
               Veja a tik funcionando na sua realidade
             </h2>
@@ -410,7 +413,7 @@ export default function Principal() {
       {/* Footer */}
       <footer className="bg-tik-navy py-8">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <TikLogo />
+          <TikLogo variant="white" />
           <p className="text-gray-400 text-sm">tik - Todos os direitos reservados</p>
           <p className="text-gray-400 text-sm">Um produto: IVI</p>
         </div>
@@ -419,21 +422,6 @@ export default function Principal() {
   )
 }
 
-function TikLogo() {
-  return <img src={logo} alt="Tik" className="h-8 w-auto select-none" />
-}
-
-function PhotoBlock({ ratio, accent }) {
-  const gradient = accent === 'blue' ? 'from-slate-300 to-slate-400' : 'from-orange-200 to-slate-300'
-  return (
-    <div className="relative">
-      <div
-        className={`absolute z-0 ${accent === 'blue' ? 'bg-gradient-to-br from-blue-800 to-cyan-400' : 'bg-gradient-to-br from-orange-500 to-yellow-400'} w-2/3 h-full top-6 left-6`}
-        style={{ clipPath: 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)' }}
-      />
-      <div className={`relative z-10 ${ratio} rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
-        <Image size={48} className="text-white/60" />
-      </div>
-    </div>
-  )
+function TikLogo({ variant = 'navy' }) {
+  return <img src={variant === 'white' ? logoWhite : logoNavy} alt="Tik" className="h-8 w-auto select-none" />
 }
