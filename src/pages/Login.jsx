@@ -75,7 +75,7 @@ export default function Login() {
         }
       } else {
         await login(email, password)
-        navigate('/')
+        navigate('/home')
       }
     } catch (err) {
       setError(isSignup ? (err.message || 'Não foi possível criar a conta.') : 'Email ou senha inválidos.')

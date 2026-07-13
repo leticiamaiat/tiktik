@@ -206,23 +206,24 @@ export default function Principal() {
 
       {/* Como funciona */}
       <section id="como-funciona" className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-md mb-12">
+        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-[280px_1fr] gap-x-12 gap-y-10">
+          <div className="md:sticky md:top-24 md:self-start">
             <h2 className="text-3xl md:text-4xl font-black text-gray-800 leading-tight">
               Como funciona a <span className="text-tik-blue">tik</span>?
             </h2>
             <p className="text-gray-600 mt-3">Um fluxo simples para registrar, validar e mostrar resultados.</p>
           </div>
 
-          <div className="space-y-8">
-            {STEPS.map(({ number, title, image }, i) => (
-              <div key={number} className={`relative max-w-sm ${i % 2 === 1 ? 'md:ml-auto' : ''}`}>
-                {i < STEPS.length - 1 && (
-                  <span className="absolute left-6 -bottom-8 w-px h-8 border-l-2 border-dashed border-gray-300" />
-                )}
-                <img src={image} alt={title} className="w-full h-auto" />
-              </div>
-            ))}
+          <div className="relative max-w-md w-full mx-auto md:mx-0">
+            <span className="absolute left-1/2 top-8 bottom-8 w-px -translate-x-1/2 border-l-2 border-dashed border-gray-300" />
+            <div className="space-y-10">
+              {STEPS.map(({ number, title, image }, i) => (
+                <div key={number} className={`relative flex ${i % 2 === 1 ? 'justify-end' : 'justify-start'}`}>
+                  <span className="absolute left-1/2 top-8 -translate-x-1/2 z-10 w-3 h-3 rounded-full bg-white border-2 border-gray-300" />
+                  <img src={image} alt={title} className="w-[85%] sm:w-72 h-auto" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
