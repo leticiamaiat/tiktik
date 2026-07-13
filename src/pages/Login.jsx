@@ -273,7 +273,7 @@ export default function Login() {
         </p>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Plataforma de gestão pública municipal
+          Plataforma Digital de Comunicação Integrada
         </p>
       </div>
     </div>
