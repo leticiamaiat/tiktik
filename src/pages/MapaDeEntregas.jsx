@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import {
   X, Heart, Calendar, HeartPulse, HandHeart, GraduationCap,
@@ -23,6 +23,15 @@ const areaIcons = {
   'Desenvolvimento Econômico': Briefcase,
 }
 
+// Área ocupada pelo painel de legenda (top-left) e pelos cards de resumo
+// (bottom-left) — os cards de detalhe não devem nascer nessas zonas.
+const CARD_W = 320
+const CARD_H = 340
+const MARGIN = 16
+const LEFT_SAFE = 320
+const BOTTOM_SAFE = 130
+const MAX_CARDS = 4
+
 function pinIcon(color) {
   return {
     path: 'M12 2C7.58 2 4 5.58 4 10c0 5.25 7.05 11.35 7.35 11.61a1 1 0 0 0 1.3 0C12.95 21.35 20 15.25 20 10c0-4.42-3.58-8-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z',
@@ -35,12 +44,107 @@ function pinIcon(color) {
   }
 }
 
+function randomCardPosition(containerRect, existing) {
+  const width = containerRect?.width || 1000
+  const height = containerRect?.height || 600
+  const maxLeft = Math.max(LEFT_SAFE, width - CARD_W - MARGIN)
+  const maxTop = Math.max(MARGIN, height - CARD_H - MARGIN - BOTTOM_SAFE)
+
+  let left = LEFT_SAFE + Math.random() * Math.max(0, maxLeft - LEFT_SAFE)
+  let top = MARGIN + Math.random() * Math.max(0, maxTop - MARGIN)
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const overlaps = existing.some(
+      (c) => Math.abs(c.position.left - left) < CARD_W * 0.6 && Math.abs(c.position.top - top) < CARD_H * 0.6
+    )
+    if (!overlaps) break
+    left = LEFT_SAFE + Math.random() * Math.max(0, maxLeft - LEFT_SAFE)
+    top = MARGIN + Math.random() * Math.max(0, maxTop - MARGIN)
+  }
+
+  return { left, top }
+}
+
+function DeliveryCard({ tik, position, onClose }) {
+  const Icon = areaIcons[tik.area]
+  const likeCount = (tik.likes || []).length
+
+  return (
+    <div
+      className="absolute z-20 w-80 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-2xl overflow-hidden"
+      style={{ left: position.left, top: position.top }}
+    >
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: areaColors[tik.area] || '#E07B22' }}
+          >
+            {Icon && <Icon size={14} className="text-white" />}
+          </span>
+          <span className="font-semibold text-gray-700 text-sm truncate">{tik.area}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0 cursor-pointer"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {tik.image_url ? (
+        <img src={tik.image_url} alt={tik.area} className="w-full h-40 object-cover" />
+      ) : (
+        <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
+          <span className="text-gray-300 text-4xl">📷</span>
+        </div>
+      )}
+
+      <div className="px-4 py-3">
+        {tik.description && (
+          <p className="text-sm font-semibold text-gray-800 mb-1">{tik.description}</p>
+        )}
+        {tik.location && (
+          <p className="text-xs text-gray-500 mb-1">{tik.location}</p>
+        )}
+        {tik.created_at && (
+          <p className="text-xs text-gray-400 mb-3 flex items-center gap-1">
+            <Calendar size={12} />
+            {new Date(tik.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-tik-orange flex items-center justify-center flex-shrink-0">
+              {tik.profiles?.avatar_url ? (
+                <img src={tik.profiles.avatar_url} alt={tik.profiles.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white text-xs font-bold">{(tik.profiles?.name || '?')[0]}</span>
+              )}
+            </div>
+            <div className="leading-tight min-w-0">
+              <p className="text-[10px] text-gray-400">Enviado por:</p>
+              <p className="text-xs font-semibold text-gray-700 truncate">{tik.profiles?.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-gray-400 text-xs flex-shrink-0">
+            <Heart size={14} />
+            {likeCount} curtida{likeCount === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MapaDeEntregas() {
   const { user } = useAuth()
+  const mapWrapRef = useRef(null)
   const [tiks, setTiks] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeAreas, setActiveAreas] = useState(() => new Set(areas))
-  const [selectedTik, setSelectedTik] = useState(null)
+  const [openCards, setOpenCards] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -77,12 +181,27 @@ export default function MapaDeEntregas() {
     })
   }
 
-  const SelectedIcon = selectedTik ? areaIcons[selectedTik.area] : null
-  const likeCount = selectedTik ? (selectedTik.likes || []).length : 0
+  function handleMarkerClick(tik) {
+    setOpenCards((prev) => {
+      // clicar de novo no mesmo marcador fecha o card
+      if (prev.some((c) => c.tik.id === tik.id)) {
+        return prev.filter((c) => c.tik.id !== tik.id)
+      }
+      const rect = mapWrapRef.current?.getBoundingClientRect()
+      const position = randomCardPosition(rect, prev)
+      const next = [...prev, { tik, position }]
+      // evita empilhar cards demais na tela: remove os mais antigos
+      return next.length > MAX_CARDS ? next.slice(next.length - MAX_CARDS) : next
+    })
+  }
+
+  function closeCard(id) {
+    setOpenCards((prev) => prev.filter((c) => c.tik.id !== id))
+  }
 
   return (
     <Layout>
-      <div className="relative">
+      <div className="relative" ref={mapWrapRef}>
         {isLoaded ? (
           <GoogleMap mapContainerStyle={mapContainerStyle} center={defaultCenter} zoom={13}>
             {visibleTiks.map((tik) => (
@@ -91,7 +210,7 @@ export default function MapaDeEntregas() {
                 position={{ lat: tik.lat, lng: tik.lng }}
                 title={tik.area}
                 icon={pinIcon(areaColors[tik.area] || '#E07B22')}
-                onClick={() => setSelectedTik(tik)}
+                onClick={() => handleMarkerClick(tik)}
               />
             ))}
           </GoogleMap>
@@ -164,71 +283,10 @@ export default function MapaDeEntregas() {
           )}
         </div>
 
-        {/* Card de detalhe da entrega selecionada */}
-        {selectedTik && (
-          <div className="absolute top-4 right-4 z-20 w-80 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: areaColors[selectedTik.area] || '#E07B22' }}
-                >
-                  {SelectedIcon && <SelectedIcon size={14} className="text-white" />}
-                </span>
-                <span className="font-semibold text-gray-700 text-sm truncate">{selectedTik.area}</span>
-              </div>
-              <button
-                onClick={() => setSelectedTik(null)}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0 cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {selectedTik.image_url ? (
-              <img src={selectedTik.image_url} alt={selectedTik.area} className="w-full h-40 object-cover" />
-            ) : (
-              <div className="w-full h-40 bg-gray-100 flex items-center justify-center">
-                <span className="text-gray-300 text-4xl">📷</span>
-              </div>
-            )}
-
-            <div className="px-4 py-3">
-              {selectedTik.description && (
-                <p className="text-sm font-semibold text-gray-800 mb-1">{selectedTik.description}</p>
-              )}
-              {selectedTik.location && (
-                <p className="text-xs text-gray-500 mb-1">{selectedTik.location}</p>
-              )}
-              {selectedTik.created_at && (
-                <p className="text-xs text-gray-400 mb-3 flex items-center gap-1">
-                  <Calendar size={12} />
-                  {new Date(selectedTik.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full overflow-hidden bg-tik-orange flex items-center justify-center flex-shrink-0">
-                    {selectedTik.profiles?.avatar_url ? (
-                      <img src={selectedTik.profiles.avatar_url} alt={selectedTik.profiles.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-white text-xs font-bold">{(selectedTik.profiles?.name || '?')[0]}</span>
-                    )}
-                  </div>
-                  <div className="leading-tight min-w-0">
-                    <p className="text-[10px] text-gray-400">Enviado por:</p>
-                    <p className="text-xs font-semibold text-gray-700 truncate">{selectedTik.profiles?.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-gray-400 text-xs flex-shrink-0">
-                  <Heart size={14} />
-                  {likeCount} curtida{likeCount === 1 ? '' : 's'}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Cards de detalhe das entregas selecionadas */}
+        {openCards.map(({ tik, position }) => (
+          <DeliveryCard key={tik.id} tik={tik} position={position} onClose={() => closeCard(tik.id)} />
+        ))}
       </div>
     </Layout>
   )
