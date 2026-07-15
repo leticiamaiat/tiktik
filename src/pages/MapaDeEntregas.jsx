@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import {
   X, Heart, Calendar, HeartPulse, HandHeart, GraduationCap,
@@ -23,13 +23,6 @@ const areaIcons = {
   'Desenvolvimento Econômico': Briefcase,
 }
 
-// Área ocupada pelo painel de legenda (top-left) e pelos cards de resumo
-// (bottom-left) — os cards de detalhe não devem nascer nessas zonas.
-const CARD_W = 320
-const CARD_H = 340
-const MARGIN = 16
-const LEFT_SAFE = 320
-const BOTTOM_SAFE = 130
 const MAX_CARDS = 4
 
 function pinIcon(color) {
@@ -44,35 +37,14 @@ function pinIcon(color) {
   }
 }
 
-function randomCardPosition(containerRect, existing) {
-  const width = containerRect?.width || 1000
-  const height = containerRect?.height || 600
-  const maxLeft = Math.max(LEFT_SAFE, width - CARD_W - MARGIN)
-  const maxTop = Math.max(MARGIN, height - CARD_H - MARGIN - BOTTOM_SAFE)
-
-  let left = LEFT_SAFE + Math.random() * Math.max(0, maxLeft - LEFT_SAFE)
-  let top = MARGIN + Math.random() * Math.max(0, maxTop - MARGIN)
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const overlaps = existing.some(
-      (c) => Math.abs(c.position.left - left) < CARD_W * 0.6 && Math.abs(c.position.top - top) < CARD_H * 0.6
-    )
-    if (!overlaps) break
-    left = LEFT_SAFE + Math.random() * Math.max(0, maxLeft - LEFT_SAFE)
-    top = MARGIN + Math.random() * Math.max(0, maxTop - MARGIN)
-  }
-
-  return { left, top }
-}
-
-function DeliveryCard({ tik, position, onClose }) {
+function DeliveryCard({ tik, offset, onClose }) {
   const Icon = areaIcons[tik.area]
   const likeCount = (tik.likes || []).length
 
   return (
     <div
-      className="absolute z-20 w-80 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-2xl overflow-hidden"
-      style={{ left: position.left, top: position.top }}
+      className="absolute z-20 top-1/2 left-1/2 w-80 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-2xl overflow-hidden"
+      style={{ transform: `translate(calc(-50% + ${offset}px), calc(-50% + ${offset}px))` }}
     >
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
@@ -140,7 +112,6 @@ function DeliveryCard({ tik, position, onClose }) {
 
 export default function MapaDeEntregas() {
   const { user } = useAuth()
-  const mapWrapRef = useRef(null)
   const [tiks, setTiks] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeAreas, setActiveAreas] = useState(() => new Set(areas))
@@ -184,24 +155,22 @@ export default function MapaDeEntregas() {
   function handleMarkerClick(tik) {
     setOpenCards((prev) => {
       // clicar de novo no mesmo marcador fecha o card
-      if (prev.some((c) => c.tik.id === tik.id)) {
-        return prev.filter((c) => c.tik.id !== tik.id)
+      if (prev.some((c) => c.id === tik.id)) {
+        return prev.filter((c) => c.id !== tik.id)
       }
-      const rect = mapWrapRef.current?.getBoundingClientRect()
-      const position = randomCardPosition(rect, prev)
-      const next = [...prev, { tik, position }]
+      const next = [...prev, tik]
       // evita empilhar cards demais na tela: remove os mais antigos
       return next.length > MAX_CARDS ? next.slice(next.length - MAX_CARDS) : next
     })
   }
 
   function closeCard(id) {
-    setOpenCards((prev) => prev.filter((c) => c.tik.id !== id))
+    setOpenCards((prev) => prev.filter((c) => c.id !== id))
   }
 
   return (
     <Layout>
-      <div className="relative" ref={mapWrapRef}>
+      <div className="relative">
         {isLoaded ? (
           <GoogleMap mapContainerStyle={mapContainerStyle} center={defaultCenter} zoom={13}>
             {visibleTiks.map((tik) => (
@@ -284,8 +253,14 @@ export default function MapaDeEntregas() {
         </div>
 
         {/* Cards de detalhe das entregas selecionadas */}
-        {openCards.map(({ tik, position }) => (
-          <DeliveryCard key={tik.id} tik={tik} position={position} onClose={() => closeCard(tik.id)} />
+        {openCards.length > 0 && (
+          <div
+            className="absolute inset-0 z-10 bg-black/30"
+            onClick={() => setOpenCards([])}
+          />
+        )}
+        {openCards.map((tik, i) => (
+          <DeliveryCard key={tik.id} tik={tik} offset={i * 24} onClose={() => closeCard(tik.id)} />
         ))}
       </div>
     </Layout>
