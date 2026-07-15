@@ -228,8 +228,8 @@ export default function MapaDeEntregas() {
           </div>
         </div>
 
-        {/* Cards de resumo por área */}
-        <div className="absolute bottom-4 left-4 z-10 flex gap-2 flex-wrap max-w-[calc(100%-2rem)]">
+        {/* Cards de resumo por área (ocultos no mobile) */}
+        <div className="hidden sm:flex absolute bottom-4 left-4 z-10 gap-2 flex-wrap max-w-[calc(100%-2rem)]">
           {areas.filter((a) => countsByArea[a] > 0).map((area) => {
             const Icon = areaIcons[area]
             return (
