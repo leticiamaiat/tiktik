@@ -38,6 +38,12 @@ export default function Home() {
         .then(setIgConn)
         .catch(() => setIgConn(null))
     }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setUserLocation(defaultCenter)
+      )
+    }
   }, [])
 
   const handleOpenModal = useCallback(() => {
@@ -128,10 +134,22 @@ export default function Home() {
         {isLoaded ? (
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
-            center={defaultCenter}
+            center={userLocation}
             zoom={11}
             mapTypeId={mapType}
           >
+            <Marker
+              position={userLocation}
+              title="Sua localização"
+              icon={{
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+              }}
+            />
             {tiks.map((tik) => (
               <Marker
                 key={tik.id}
