@@ -27,6 +27,9 @@ export const areas = [
   'Segurança Pública',
   'Cultura',
   'Desenvolvimento Econômico',
+  'Governança Pública',
+  'Esporte e Lazer',
+  'Tecnologia e Inovação',
 ]
 
 export const areaColors = {
@@ -38,6 +41,9 @@ export const areaColors = {
   'Cultura': '#3F51B5',
   'Educação': '#FF5722',
   'Desenvolvimento Econômico': '#009688',
+  'Governança Pública': '#607D8B',
+  'Esporte e Lazer': '#FFC107',
+  'Tecnologia e Inovação': '#00BCD4',
 }
 
 export const mockTiks = [
