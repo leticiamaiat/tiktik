@@ -111,7 +111,11 @@ export default function Home() {
   })
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
 
-  const userTikCount = tiks.filter((t) => t.user_id === user?.id).length
+  const municipalityTiks = tiks.filter((t) => t.profiles?.municipality === user?.municipality)
+  const totalTikCount = municipalityTiks.length
+  const todayTikCount = municipalityTiks.filter(
+    (t) => t.created_at && new Date(t.created_at).toDateString() === new Date().toDateString()
+  ).length
   const isBlocked = user?.autorizado === false
 
   return (
@@ -180,17 +184,13 @@ export default function Home() {
         {/* Counters */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
           <div className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md bg-gray-600">
-            <span className="text-lg font-black">{userTikCount}</span>
-            <span className="text-[9px]">Tiks</span>
+            <span className="text-lg font-black">{totalTikCount}</span>
+            <span className="text-[9px]">Total</span>
           </div>
-          <button
-            onClick={handleOpenModal}
-            disabled={isBlocked}
-            title={isBlocked ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.' : undefined}
-            className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white text-xs font-bold shadow-md bg-tik-orange disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="text-[9px] text-center leading-tight">Fazer<br/>Tik</span>
-          </button>
+          <div className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md bg-tik-orange">
+            <span className="text-lg font-black">{todayTikCount}</span>
+            <span className="text-[9px]">Hoje</span>
+          </div>
         </div>
       </div>
 
