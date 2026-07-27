@@ -1,16 +1,18 @@
 import { Menu } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import logo from '../assets/00_logo_2.png'
 
 export default function Header({ onMenuToggle }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm h-14 flex items-center justify-between px-4">
       {/* Logo */}
-      <div className="flex items-center">
+      <button onClick={() => navigate('/home')} className="flex items-center cursor-pointer">
         <img src={logo} alt="Tik" className="h-8 w-auto select-none" />
-      </div>
+      </button>
 
       {/* User info + menu */}
       {user && (
