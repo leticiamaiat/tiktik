@@ -214,7 +214,7 @@ export default function Principal() {
             <p className="text-gray-600 mt-3">Um fluxo simples para registrar, validar e mostrar resultados.</p>
           </div>
 
-          <div className="relative max-w-md w-full mx-auto md:mx-0">
+          <div className="relative max-w-md w-full mx-auto">
             <span className="absolute left-1/2 top-8 bottom-8 w-px -translate-x-1/2 border-l-2 border-dashed border-gray-300" />
             <div className="space-y-10">
               {STEPS.map(({ number, title, image }, i) => (
@@ -356,7 +356,6 @@ export default function Principal() {
       <section id="contato" className="bg-tik-orange py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <img src={contatoImg} alt="Homem sorrindo mostrando o app tik no celular" className="w-full max-w-sm h-auto mb-6" />
             <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
               Veja a tik funcionando na sua realidade
             </h2>
@@ -371,43 +370,46 @@ export default function Principal() {
             </p>
           </div>
 
-          <form onSubmit={handleDemoSubmit} className="bg-transparent space-y-3 max-w-sm md:ml-auto w-full">
-            <input
-              type="text"
-              placeholder="Nome"
-              required
-              value={form.nome}
-              onChange={(e) => setForm({ ...form, nome: e.target.value })}
-              className="w-full rounded-full px-5 py-3 text-sm focus:outline-none"
-            />
-            <select
-              required
-              value={form.cargo}
-              onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-              className="w-full rounded-full px-5 py-3 text-sm focus:outline-none text-gray-700"
-            >
-              <option value="" disabled>Cargo</option>
-              {CARGOS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-            <input
-              type="tel"
-              placeholder="Telefone/WhatsApp"
-              required
-              value={form.telefone}
-              onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-              className="w-full rounded-full px-5 py-3 text-sm focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="w-full bg-tik-navy text-white rounded-full py-3 font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors"
-            >
-              <Send size={16} /> ENVIAR
-            </button>
-            <p className="text-center text-white/80 text-xs">Demonstração sem compromisso</p>
-            <p className="text-center text-white/80 text-xs">Rápida, objetiva e focada na realidade da sua prefeitura</p>
-          </form>
+          <div className="max-w-sm md:ml-auto w-full">
+            <img src={contatoImg} alt="Homem sorrindo mostrando o app tik no celular" className="w-full max-w-md h-auto mb-6" />
+            <form onSubmit={handleDemoSubmit} className="bg-transparent space-y-3 w-full">
+              <input
+                type="text"
+                placeholder="Nome"
+                required
+                value={form.nome}
+                onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                className="w-full rounded-full px-5 py-3 text-sm focus:outline-none"
+              />
+              <select
+                required
+                value={form.cargo}
+                onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                className="w-full rounded-full px-5 py-3 text-sm focus:outline-none text-gray-700"
+              >
+                <option value="" disabled>Cargo</option>
+                {CARGOS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                placeholder="Telefone/WhatsApp"
+                required
+                value={form.telefone}
+                onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                className="w-full rounded-full px-5 py-3 text-sm focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="w-full bg-tik-navy text-white rounded-full py-3 font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors"
+              >
+                <Send size={16} /> ENVIAR
+              </button>
+              <p className="text-center text-white/80 text-xs">Demonstração sem compromisso</p>
+              <p className="text-center text-white/80 text-xs">Rápida, objetiva e focada na realidade da sua prefeitura</p>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -424,5 +426,10 @@ export default function Principal() {
 }
 
 function TikLogo({ variant = 'navy' }) {
-  return <img src={variant === 'white' ? logoWhite : logoNavy} alt="Tik" className="h-8 w-auto select-none" />
+  const navigate = useNavigate()
+  return (
+    <button onClick={() => navigate('/')} className="cursor-pointer">
+      <img src={variant === 'white' ? logoWhite : logoNavy} alt="Tik" className="h-8 w-auto select-none" />
+    </button>
+  )
 }

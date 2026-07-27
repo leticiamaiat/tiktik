@@ -281,6 +281,11 @@ export default function Login() {
 }
 
 function TikLogo({ size = 'md' }) {
+  const navigate = useNavigate()
   const cls = size === 'lg' ? 'h-12' : 'h-8'
-  return <img src={logo} alt="Tik" className={`${cls} w-auto select-none`} />
+  return (
+    <button onClick={() => navigate('/')} className="cursor-pointer">
+      <img src={logo} alt="Tik" className={`${cls} w-auto select-none`} />
+    </button>
+  )
 }
