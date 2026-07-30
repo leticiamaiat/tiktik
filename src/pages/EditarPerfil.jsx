@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +9,7 @@ import { UFS, SECRETARIAS } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
 
 export default function EditarPerfil() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, changePassword, changeEmail, deleteAccount } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -27,6 +27,15 @@ export default function EditarPerfil() {
   const [saving, setSaving] = useState(false)
   const [municipios, setMunicipios] = useState([])
   const [loadingMunicipios, setLoadingMunicipios] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(true)
+
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const [emailForm, setEmailForm] = useState({ currentPassword: '', newEmail: '' })
+  const [changingEmail, setChangingEmail] = useState(false)
+
+  const [deleting, setDeleting] = useState(false)
 
   const handleChange = (field, value) => setForm((f) => ({ ...f, [field]: value }))
 
@@ -53,6 +62,10 @@ export default function EditarPerfil() {
   }
 
   const handleSave = async () => {
+    if (!agreedToTerms) {
+      toast.error('Você precisa concordar com os Termos de Uso e Política de Privacidade.')
+      return
+    }
     setSaving(true)
     try {
       let avatar_url = user?.avatar_url
@@ -67,6 +80,67 @@ export default function EditarPerfil() {
       toast.error(err.message || 'Erro ao salvar o perfil')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Preencha todos os campos de senha.')
+      return
+    }
+    if (newPassword.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('A confirmação de senha não confere.')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      await changePassword(currentPassword, newPassword)
+      toast.success('Senha redefinida com sucesso!')
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Erro ao redefinir a senha')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  const handleChangeEmail = async () => {
+    const { currentPassword, newEmail } = emailForm
+    if (!currentPassword || !newEmail) {
+      toast.error('Preencha a senha atual e o novo email.')
+      return
+    }
+    setChangingEmail(true)
+    try {
+      await changeEmail(currentPassword, newEmail)
+      toast.success('Email atualizado! Confirme o novo endereço para concluir a alteração.')
+      setEmailForm({ currentPassword: '', newEmail: '' })
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Erro ao alterar o email')
+    } finally {
+      setChangingEmail(false)
+    }
+  }
+
+  const handleDeleteProfile = async () => {
+    const confirmed = window.confirm('Tem certeza que deseja apagar seu perfil? Esta ação não pode ser desfeita.')
+    if (!confirmed) return
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      toast.success('Perfil apagado.')
+      navigate('/login')
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Erro ao apagar o perfil')
+      setDeleting(false)
     }
   }
 
@@ -194,9 +268,105 @@ export default function EditarPerfil() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="00000-000" />
           </div>
 
-          <div className="flex justify-center mt-6">
+          <label className="flex items-center gap-2 mb-6 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="w-4 h-4 accent-tik-orange"
+            />
+            Eu concordo com os{' '}
+            <Link to="/documentos-legais" className="text-tik-orange hover:underline">
+              Termos de Uso e Política de Privacidade
+            </Link>
+            .
+          </label>
+
+          <div className="flex justify-center mb-8">
             <button onClick={handleSave} disabled={saving} className="btn-orange px-12 py-2.5 disabled:opacity-60">
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? 'ATUALIZANDO...' : 'ATUALIZAR PERFIL'}
+            </button>
+          </div>
+
+          {/* ---------------- Configuração ---------------- */}
+          <h2 className="text-base font-bold text-tik-orange mb-4">Configuração</h2>
+
+          <p className="text-sm text-gray-500 mb-2">Redefinir senha:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Senha atual:</label>
+              <input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Nova senha:</label>
+              <input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Confirmar nova senha:</label>
+              <input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex justify-center mb-8">
+            <button onClick={handleChangePassword} disabled={changingPassword} className="btn-outline-danger">
+              {changingPassword ? 'REDEFININDO...' : 'REDEFINIR SENHA'}
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-500 mb-2">Redefinir email:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Email atual:</label>
+              <input
+                type="email"
+                value={user?.email || ''}
+                readOnly
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Senha atual:</label>
+              <input
+                type="password"
+                value={emailForm.currentPassword}
+                onChange={(e) => setEmailForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Novo email:</label>
+              <input
+                type="email"
+                value={emailForm.newEmail}
+                onChange={(e) => setEmailForm((f) => ({ ...f, newEmail: e.target.value }))}
+                placeholder="Digite o novo email"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex justify-center mb-8">
+            <button onClick={handleChangeEmail} disabled={changingEmail} className="btn-outline-danger">
+              {changingEmail ? 'ALTERANDO...' : 'ALTERAR EMAIL'}
+            </button>
+          </div>
+
+          <div className="flex justify-center">
+            <button onClick={handleDeleteProfile} disabled={deleting} className="btn-outline-danger">
+              {deleting ? 'APAGANDO...' : 'APAGAR PERFIL'}
             </button>
           </div>
         </div>

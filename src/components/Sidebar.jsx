@@ -10,7 +10,7 @@ const menuItems = [
   { label: 'Colaboradores', path: '/colaboradores' },
   { label: 'Integração com redes sociais', path: '/integracao-redes' },
   { label: 'Editar meu perfil', path: '/editar-perfil' },
-  { label: 'Termos de uso', path: '/termos-de-uso' },
+  { label: 'Políticas e Termos', path: '/documentos-legais' },
   { label: 'Sair', path: null },
 ]
 

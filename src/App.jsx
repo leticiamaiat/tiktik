@@ -14,7 +14,7 @@ import Tikgram from './pages/Tikgram'
 import Colaboradores from './pages/Colaboradores'
 import IntegracaoRedes from './pages/IntegracaoRedes'
 import EditarPerfil from './pages/EditarPerfil'
-import TermosDeUso from './pages/TermosDeUso'
+import DocumentosLegais from './pages/DocumentosLegais'
 
 export default function App() {
   return (
@@ -35,7 +35,8 @@ export default function App() {
           <Route path="/colaboradores" element={<ProtectedRoute><Colaboradores /></ProtectedRoute>} />
           <Route path="/integracao-redes" element={<ProtectedRoute><IntegracaoRedes /></ProtectedRoute>} />
           <Route path="/editar-perfil" element={<ProtectedRoute><EditarPerfil /></ProtectedRoute>} />
-          <Route path="/termos-de-uso" element={<ProtectedRoute><TermosDeUso /></ProtectedRoute>} />
+          <Route path="/documentos-legais" element={<ProtectedRoute><DocumentosLegais /></ProtectedRoute>} />
+          <Route path="/termos-de-uso" element={<Navigate to="/documentos-legais" replace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

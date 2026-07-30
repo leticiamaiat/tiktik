@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { getProfile, updateProfile, createProfile } from '../services/profiles'
-import { signIn, signOut, signUp } from '../services/auth'
+import { getProfile, updateProfile, createProfile, deleteProfile } from '../services/profiles'
+import { signIn, signOut, signUp, updatePassword, updateEmail } from '../services/auth'
 
 const AuthContext = createContext(null)
 
@@ -80,8 +80,26 @@ export function AuthProvider({ children }) {
     setUser((prev) => ({ ...prev, ...updated, firstName: (updated.name || prev.name || '').split(' ')[0] }))
   }
 
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!user?.email) return
+    await updatePassword(user.email, currentPassword, newPassword)
+  }
+
+  const changeEmail = async (currentPassword, newEmail) => {
+    if (!user?.email) return
+    await updateEmail(user.email, currentPassword, newEmail)
+  }
+
+  const deleteAccount = async () => {
+    if (!user?.id) return
+    await deleteProfile(user.id)
+    await logout()
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, updateUser, changePassword, changeEmail, deleteAccount }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   )

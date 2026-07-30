@@ -25,3 +25,15 @@ export async function getSession() {
   const { data } = await supabase.auth.getSession()
   return data.session
 }
+
+export async function updatePassword(email, currentPassword, newPassword) {
+  await signIn(email, currentPassword)
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+}
+
+export async function updateEmail(currentEmail, currentPassword, newEmail) {
+  await signIn(currentEmail, currentPassword)
+  const { error } = await supabase.auth.updateUser({ email: newEmail })
+  if (error) throw error
+}
