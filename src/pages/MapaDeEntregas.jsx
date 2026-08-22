@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import {
   X, Heart, Calendar, HeartPulse, HandHeart, GraduationCap,
-  HardHat, Leaf, Shield, Palette, Briefcase,
+  HardHat, Leaf, Shield, Palette, Briefcase, Landmark, Trophy, Cpu,
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
@@ -21,6 +21,9 @@ const areaIcons = {
   'Segurança Pública': Shield,
   'Cultura': Palette,
   'Desenvolvimento Econômico': Briefcase,
+  'Governança Pública': Landmark,
+  'Esporte e Lazer': Trophy,
+  'Tecnologia e Inovação': Cpu,
 }
 
 const MAX_CARDS = 4
@@ -238,7 +241,7 @@ export default function MapaDeEntregas() {
                   className="w-8 h-8 rounded-full flex items-center justify-center mb-1"
                   style={{ backgroundColor: areaColors[area] }}
                 >
-                  <Icon size={16} className="text-white" />
+                  {Icon && <Icon size={16} className="text-white" />}
                 </span>
                 <span className="text-lg font-bold text-gray-800 leading-none">{countsByArea[area]}</span>
                 <span className="text-[11px] text-gray-500 text-center leading-tight mt-0.5">{area.split(',')[0]}</span>
