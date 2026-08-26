@@ -1,22 +1,23 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-const menuItems = [
-  { label: 'Fazer um tik', path: '/home' },
-  { label: 'Mapa de entregas', path: '/mapa-de-entregas' },
-  { label: 'Dashboard', path: '/dashboard' },
-  { label: 'Meus tiks', path: '/meus-tiks' },
-  { label: 'Tikgram', path: '/tikgram' },
-  { label: 'Colaboradores', path: '/colaboradores' },
-  { label: 'Integração com redes sociais', path: '/integracao-redes' },
-  { label: 'Editar meu perfil', path: '/editar-perfil' },
-  { label: 'Políticas e Termos', path: '/documentos-legais' },
-  { label: 'Sair', path: null },
-]
-
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
+
+  const menuItems = [
+    { label: 'Fazer um tik', path: '/home' },
+    { label: 'Mapa de entregas', path: '/mapa-de-entregas' },
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Meus tiks', path: '/meus-tiks' },
+    { label: 'Tikgram', path: '/tikgram' },
+    { label: 'Colaboradores', path: '/colaboradores' },
+    { label: 'Integração com redes sociais', path: '/integracao-redes' },
+    ...(user?.is_admin ? [{ label: 'Publicação nas redes', path: '/publicacao-redes' }] : []),
+    { label: 'Editar meu perfil', path: '/editar-perfil' },
+    { label: 'Políticas e Termos', path: '/documentos-legais' },
+    { label: 'Sair', path: null },
+  ]
 
   const handleClick = (item) => {
     if (item.path === null) {

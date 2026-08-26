@@ -13,6 +13,7 @@ import TikDetalhe from './pages/TikDetalhe'
 import Tikgram from './pages/Tikgram'
 import Colaboradores from './pages/Colaboradores'
 import IntegracaoRedes from './pages/IntegracaoRedes'
+import PublicacaoRedes from './pages/PublicacaoRedes'
 import EditarPerfil from './pages/EditarPerfil'
 import DocumentosLegais from './pages/DocumentosLegais'
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/tikgram" element={<ProtectedRoute><Tikgram /></ProtectedRoute>} />
           <Route path="/colaboradores" element={<ProtectedRoute><Colaboradores /></ProtectedRoute>} />
           <Route path="/integracao-redes" element={<ProtectedRoute><IntegracaoRedes /></ProtectedRoute>} />
+          <Route path="/publicacao-redes" element={<ProtectedRoute><PublicacaoRedes /></ProtectedRoute>} />
           <Route path="/editar-perfil" element={<ProtectedRoute><EditarPerfil /></ProtectedRoute>} />
           <Route path="/documentos-legais" element={<ProtectedRoute><DocumentosLegais /></ProtectedRoute>} />
           <Route path="/termos-de-uso" element={<Navigate to="/documentos-legais" replace />} />
