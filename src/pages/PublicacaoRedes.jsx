@@ -1,12 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink, Pencil, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
-import { getTiks } from '../services/tiks'
+import { getTiks, updateLegendaRedes } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
 import { areas } from '../data/mockData'
+
+// Legenda padrão sugerida quando o tik ainda não tem uma legenda de redes
+// personalizada (legenda_redes). Usada tanto pra exibir quanto pra publicar.
+function defaultCaption(tik) {
+  return `${tik.area ? `${tik.area}\n\n` : ''}${tik.description || ''}`
+}
 
 export default function PublicacaoRedes() {
   const { user } = useAuth()
@@ -27,6 +33,10 @@ export default function PublicacaoRedes() {
 
   const [publishingId, setPublishingId] = useState(null)
   const [publishedIds, setPublishedIds] = useState(() => new Set())
+
+  const [editingId, setEditingId] = useState(null)
+  const [draftText, setDraftText] = useState('')
+  const [savingId, setSavingId] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -79,7 +89,7 @@ export default function PublicacaoRedes() {
 
     setPublishingId(tik.id)
     try {
-      const caption = `${tik.area ? `${tik.area}\n\n` : ''}${tik.description || ''}`
+      const caption = tik.legenda_redes || defaultCaption(tik)
       await publishToInstagram(municipality, state, tik.image_url, caption)
       setPublishedIds((prev) => new Set(prev).add(tik.id))
       toast.success('Publicado no Instagram!')
@@ -88,6 +98,33 @@ export default function PublicacaoRedes() {
       toast.error(err.message || 'Erro ao publicar no Instagram')
     } finally {
       setPublishingId(null)
+    }
+  }
+
+  const handleStartEdit = (tik) => {
+    setEditingId(tik.id)
+    setDraftText(tik.legenda_redes ?? defaultCaption(tik))
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setDraftText('')
+  }
+
+  const handleSaveLegenda = async (tik) => {
+    setSavingId(tik.id)
+    try {
+      const legenda = draftText.trim() || null
+      await updateLegendaRedes(tik.id, legenda)
+      setTiks((prev) => prev.map((t) => (t.id === tik.id ? { ...t, legenda_redes: legenda } : t)))
+      setEditingId(null)
+      setDraftText('')
+      toast.success('Legenda atualizada')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao salvar legenda')
+    } finally {
+      setSavingId(null)
     }
   }
 
@@ -174,8 +211,8 @@ export default function PublicacaoRedes() {
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="flex items-center bg-tik-orange text-white text-sm font-semibold px-5 py-2">
-            <div className="w-16 flex-shrink-0" />
-            <div className="flex-1">Tik</div>
+            <div className="w-32 flex-shrink-0">Tik</div>
+            <div className="flex-1">Legenda</div>
             <div className="flex-1">Criado por</div>
             <div className="w-40 flex-shrink-0">Data de criação</div>
             <div className="w-44 flex-shrink-0 text-right">Publicar nas redes</div>
@@ -198,24 +235,66 @@ export default function PublicacaoRedes() {
             const published = publishedIds.has(tik.id)
             const publishing = publishingId === tik.id
             const canPublish = !!conn && !!tik.image_url
+            const editing = editingId === tik.id
+            const savingLegenda = savingId === tik.id
+            const legendaAtual = tik.legenda_redes || defaultCaption(tik)
 
             return (
               <div
                 key={tik.id}
                 className={`flex items-center gap-4 px-5 py-3 ${i < filteredTiks.length - 1 ? 'border-b border-gray-100' : ''} ${i % 2 === 1 ? 'bg-gray-50' : ''}`}
               >
-                <div className="w-16 flex-shrink-0">
+                <div className="w-32 flex-shrink-0 flex items-center gap-2">
                   {tik.image_url ? (
-                    <img src={tik.image_url} alt={tik.area} className="w-14 h-14 rounded-lg object-cover" />
+                    <img src={tik.image_url} alt={tik.area} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-xl">📷</div>
+                    <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-xl flex-shrink-0">📷</div>
                   )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-800 text-xs truncate">{tik.area || 'Sem secretaria'}</p>
+                    {tik.location && <p className="text-[11px] text-gray-400 truncate">📍 {tik.location}</p>}
+                  </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 text-sm truncate">{tik.area || 'Sem secretaria'}</p>
-                  <p className="text-xs text-gray-500 truncate">{tik.description}</p>
-                  {tik.location && <p className="text-xs text-gray-400 truncate">📍 {tik.location}</p>}
+                  {editing ? (
+                    <div className="flex flex-col gap-1.5">
+                      <textarea
+                        value={draftText}
+                        onChange={(e) => setDraftText(e.target.value)}
+                        rows={3}
+                        autoFocus
+                        className="w-full border border-tik-orange rounded-lg px-2 py-1.5 text-xs text-gray-700 resize-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleSaveLegenda(tik)}
+                          disabled={savingLegenda}
+                          className="flex items-center gap-1 text-xs font-semibold text-green-600 hover:text-green-700 disabled:opacity-50"
+                        >
+                          <Check size={13} /> {savingLegenda ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={savingLegenda}
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        >
+                          <X size={13} /> Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1.5">
+                      <p className="text-xs text-gray-600 whitespace-pre-line line-clamp-3 flex-1">{legendaAtual}</p>
+                      <button
+                        onClick={() => handleStartEdit(tik)}
+                        title="Editar legenda"
+                        className="text-gray-400 hover:text-tik-orange transition-colors flex-shrink-0 p-0.5"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0 text-xs text-gray-600">

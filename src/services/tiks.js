@@ -61,6 +61,17 @@ export async function createTik({ userId, area, description, lat, lng, location,
   return data
 }
 
+export async function updateLegendaRedes(tikId, legenda) {
+  const { data, error } = await supabase
+    .from('tiks')
+    .update({ legenda_redes: legenda })
+    .eq('id', tikId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteTik(tikId) {
   const { error } = await supabase.from('tiks').delete().eq('id', tikId)
   if (error) throw error
