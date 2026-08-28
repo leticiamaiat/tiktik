@@ -9,9 +9,10 @@ import { getMunicipalityConnection, publishToInstagram } from '../services/uploa
 import { areas } from '../data/mockData'
 
 // Legenda padrão sugerida quando o tik ainda não tem uma legenda de redes
-// personalizada (legenda_redes). Usada tanto pra exibir quanto pra publicar.
+// personalizada (legenda_redes) — só o texto do tik, sem a secretaria.
+// Usada tanto pra exibir quanto pra publicar.
 function defaultCaption(tik) {
-  return `${tik.area ? `${tik.area}\n\n` : ''}${tik.description || ''}`
+  return tik.description || ''
 }
 
 export default function PublicacaoRedes() {
