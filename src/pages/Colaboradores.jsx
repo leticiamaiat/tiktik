@@ -16,15 +16,20 @@ export default function Colaboradores() {
 
   const municipality = user?.municipality
   const isAdmin = !!user?.is_admin
+  const isSuperAdmin = !!user?.super_admin
+  const canManage = isAdmin || isSuperAdmin
 
   const load = useCallback(() => {
-    if (!municipality) {
+    if (!municipality && !isSuperAdmin) {
       setLoading(false)
       return
     }
     setLoading(true)
     listProfiles({
-      municipality,
+      // Super admin não passa município: enxerga colaboradores de todas as
+      // prefeituras. O filtro de "Pesquise por município..." (city) continua
+      // funcionando normalmente pra estreitar a busca.
+      municipality: isSuperAdmin ? undefined : municipality,
       search: search || undefined,
       city: city || undefined,
       startDate: startDate || undefined,
@@ -36,7 +41,7 @@ export default function Colaboradores() {
         toast.error('Erro ao carregar colaboradores')
       })
       .finally(() => setLoading(false))
-  }, [municipality, search, city, startDate, endDate])
+  }, [municipality, isSuperAdmin, search, city, startDate, endDate])
 
   useEffect(() => { load() }, [load])
 
@@ -48,7 +53,7 @@ export default function Colaboradores() {
   }
 
   const handleToggleAuth = async (profile) => {
-    if (!isAdmin) return
+    if (!canManage) return
     const next = !profile.autorizado
     setProfiles((prev) => prev.map((p) => (p.id === profile.id ? { ...p, autorizado: next } : p)))
     try {
@@ -61,7 +66,7 @@ export default function Colaboradores() {
   }
 
   const handleDelete = async (profile) => {
-    if (!isAdmin) return
+    if (!canManage) return
     if (!window.confirm(`Tem certeza que deseja excluir ${profile.name || 'este colaborador'}?`)) return
     try {
       await deleteProfile(profile.id)
@@ -77,7 +82,8 @@ export default function Colaboradores() {
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-sm text-gray-500 mb-4">
-          <span className="font-bold text-gray-700">{profiles.length}</span> Colaboradores da Prefeitura de {municipality || '—'}
+          <span className="font-bold text-gray-700">{profiles.length}</span>{' '}
+          {isSuperAdmin ? 'Colaboradores de todos os municípios' : `Colaboradores da Prefeitura de ${municipality || '—'}`}
         </h1>
 
         {/* Filters */}
@@ -131,12 +137,12 @@ export default function Colaboradores() {
           </div>
 
           {loading && <p className="text-center text-gray-400 text-sm py-8">Carregando colaboradores...</p>}
-          {!loading && !municipality && (
+          {!loading && !municipality && !isSuperAdmin && (
             <p className="text-center text-gray-400 text-sm py-8">
               Seu perfil está sem município definido. Atualize seu perfil para ver os colaboradores.
             </p>
           )}
-          {!loading && municipality && profiles.length === 0 && (
+          {!loading && (municipality || isSuperAdmin) && profiles.length === 0 && (
             <p className="text-center text-gray-400 text-sm py-8">Nenhum colaborador encontrado.</p>
           )}
 
@@ -164,6 +170,11 @@ export default function Colaboradores() {
                           Admin
                         </span>
                       )}
+                      {p.super_admin && (
+                        <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                          Super Admin
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-gray-500">CPF: {p.cpf || '—'}</p>
                   </div>
@@ -181,7 +192,7 @@ export default function Colaboradores() {
                   Enviou {tiksCount} TIKs
                 </div>
 
-                {isAdmin ? (
+                {canManage ? (
                   <>
                     <button
                       onClick={() => handleToggleAuth(p)}
