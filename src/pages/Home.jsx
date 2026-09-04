@@ -11,9 +11,11 @@ import { getMunicipalityConnection, publishToInstagram } from '../services/uploa
 import { getPlanUsage, recordShare } from '../services/plans'
 import { areas } from '../data/mockData'
 
-// Mapa ocupa 60% da altura da tela (pedido: "mapa em 60%"); a lista de tiks
-// abaixo fica em fluxo normal — rolar a página é o que faz o mapa sumir.
-const mapContainerStyle = { width: '100%', height: '60vh' }
+// Mapa "estático": fica fixo ocupando 60% da tela, e só a lista de tiks
+// abaixo dele rola (o botão FAZER UM TIK, dentro do mapa, fica sempre visível).
+const HEADER_HEIGHT = '3.5rem' // Header.jsx é h-14
+const MAP_SECTION_HEIGHT = '60vh'
+const mapContainerStyle = { width: '100%', height: '100%' }
 const modalMapStyle = { width: '100%', height: '100%' }
 const defaultCenter = { lat: -23.5015, lng: -47.4526 }
 
@@ -152,93 +154,98 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="relative">
-        {/* Map type toggle */}
-        <div className="absolute top-3 left-3 z-10 flex bg-white border border-gray-300 rounded-md overflow-hidden shadow-sm">
-          {['roadmap', 'satellite'].map((type) => (
-            <button
-              key={type}
-              onClick={() => setMapType(type)}
-              className={`px-4 py-1.5 text-sm font-medium transition-colors ${mapType === type ? 'bg-white text-gray-800' : 'bg-gray-50 text-gray-500'}`}
-            >
-              {type === 'roadmap' ? 'Mapa' : 'Satélite'}
-            </button>
-          ))}
-        </div>
-
-        {/* Main map */}
-        {isLoaded ? (
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={userLocation}
-            zoom={11}
-            mapTypeId={mapType}
-          >
-            <Marker
-              position={userLocation}
-              title="Sua localização"
-              icon={{
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: '#4285F4',
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-              }}
-            />
-            {tiks.map((tik) => (
-              <Marker
-                key={tik.id}
-                position={{ lat: tik.lat, lng: tik.lng }}
-                title={tik.area}
-                onClick={() => setSelectedTik(tik)}
-              />
+      <div className="flex flex-col" style={{ height: `calc(100vh - ${HEADER_HEIGHT})` }}>
+        {/* Mapa — altura fixa (60% da tela), não rola */}
+        <div className="relative flex-shrink-0" style={{ height: MAP_SECTION_HEIGHT }}>
+          {/* Map type toggle */}
+          <div className="absolute top-3 left-3 z-10 flex bg-white border border-gray-300 rounded-md overflow-hidden shadow-sm">
+            {['roadmap', 'satellite'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setMapType(type)}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${mapType === type ? 'bg-white text-gray-800' : 'bg-gray-50 text-gray-500'}`}
+              >
+                {type === 'roadmap' ? 'Mapa' : 'Satélite'}
+              </button>
             ))}
-          </GoogleMap>
-        ) : (
-          <div style={mapContainerStyle} className="bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-500">Carregando mapa...</span>
           </div>
-        )}
 
-        {/* Fazer um TIK */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-          <button
-            onClick={handleOpenModal}
-            disabled={makeTikDisabled}
-            title={makeTikTitle}
-            className="btn-orange px-8 py-3 text-sm font-bold tracking-widest uppercase shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Fazer um TIK
-          </button>
+          {/* Main map */}
+          {isLoaded ? (
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={userLocation}
+              zoom={11}
+              mapTypeId={mapType}
+            >
+              <Marker
+                position={userLocation}
+                title="Sua localização"
+                icon={{
+                  path: window.google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: '#4285F4',
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                }}
+              />
+              {tiks.map((tik) => (
+                <Marker
+                  key={tik.id}
+                  position={{ lat: tik.lat, lng: tik.lng }}
+                  title={tik.area}
+                  onClick={() => setSelectedTik(tik)}
+                />
+              ))}
+            </GoogleMap>
+          ) : (
+            <div style={mapContainerStyle} className="bg-gray-200 flex items-center justify-center">
+              <span className="text-gray-500">Carregando mapa...</span>
+            </div>
+          )}
+
+          {/* Fazer um TIK */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+            <button
+              onClick={handleOpenModal}
+              disabled={makeTikDisabled}
+              title={makeTikTitle}
+              className="btn-orange px-8 py-3 text-sm font-bold tracking-widest uppercase shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Fazer um TIK
+            </button>
+          </div>
+
+          {/* Counters */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2">
+            <div className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md bg-gray-600">
+              <span className="text-lg font-black">{totalTikCount}</span>
+              <span className="text-[9px]">Total</span>
+            </div>
+            <div
+              className={`w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md ${dayLimitReached ? 'bg-red-500' : 'bg-tik-orange'}`}
+              title={tikLimit != null ? `${todayTikCount} de ${tikLimit} tiks/dia do plano` : undefined}
+            >
+              <span className="text-base font-black leading-none">
+                {todayTikCount}{tikLimit != null ? `/${tikLimit}` : ''}
+              </span>
+              <span className="text-[9px] mt-0.5">Hoje</span>
+            </div>
+          </div>
         </div>
 
-        {/* Counters */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
-          <div className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md bg-gray-600">
-            <span className="text-lg font-black">{totalTikCount}</span>
-            <span className="text-[9px]">Total</span>
-          </div>
-          <div
-            className={`w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md ${dayLimitReached ? 'bg-red-500' : 'bg-tik-orange'}`}
-            title={tikLimit != null ? `${todayTikCount} de ${tikLimit} tiks/dia do plano` : undefined}
-          >
-            <span className="text-base font-black leading-none">
-              {todayTikCount}{tikLimit != null ? `/${tikLimit}` : ''}
-            </span>
-            <span className="text-[9px] mt-0.5">Hoje</span>
-          </div>
+        {/* Tiks list — única parte que rola; o mapa acima fica fixo */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {tiks.length > 0 && (
+            <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-3">
+              {tiks.map((tik) => (
+                <TikCard key={tik.id} tik={tik} onView={setSelectedTik} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Tiks list */}
-      {tiks.length > 0 && (
-        <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-3">
-          {tiks.map((tik) => (
-            <TikCard key={tik.id} tik={tik} onView={setSelectedTik} />
-          ))}
-        </div>
-      )}
 
       <TikDetailModal tik={selectedTik} onClose={() => setSelectedTik(null)} />
 
