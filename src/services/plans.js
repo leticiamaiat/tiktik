@@ -72,6 +72,20 @@ export async function recordShare({ tikId, userId, municipality, state, platform
   if (error) throw error
 }
 
+// Mapa "município|UF" -> plano, pra telas que listam colaboradores de vários
+// municípios de uma vez (ex.: Colaboradores.jsx) e precisam mostrar o plano
+// de cada linha. Diferente do RPC list_municipalities: não exige super admin
+// (a policy municipalities_select_authenticated já libera leitura geral).
+export async function listMunicipalityPlans() {
+  const { data, error } = await supabase.from('municipalities').select('municipality, state, plan')
+  if (error) throw error
+  const map = new Map()
+  for (const row of data || []) {
+    map.set(`${row.municipality}|${row.state}`, row.plan)
+  }
+  return map
+}
+
 // --- Super admin ---
 
 export async function listMunicipalities() {

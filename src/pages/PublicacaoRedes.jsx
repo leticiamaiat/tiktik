@@ -195,7 +195,17 @@ export default function PublicacaoRedes() {
 
         <div className="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl shadow-sm px-4 py-3 mb-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-700">Quem publica no Instagram?</p>
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <p className="text-sm font-semibold text-gray-700">Quem publica no Instagram?</p>
+              <span
+                className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap ${
+                  selfPublishEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${selfPublishEnabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                {selfPublishEnabled ? 'Liberado para colaboradores' : 'Restrito ao admin'}
+              </span>
+            </div>
             <p className="text-xs text-gray-400">
               {selfPublishEnabled
                 ? 'Qualquer colaborador autorizado pode marcar "publicar no Instagram" ao criar um tik.'
@@ -206,10 +216,10 @@ export default function PublicacaoRedes() {
             onClick={handleToggleSelfPublish}
             disabled={togglingSelfPublish}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${
-              selfPublishEnabled ? 'bg-tik-orange text-white hover:bg-tik-dark' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              selfPublishEnabled ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-tik-orange text-white hover:bg-tik-dark'
             }`}
           >
-            {togglingSelfPublish ? 'Salvando...' : selfPublishEnabled ? 'Colaboradores publicam' : 'Só eu publico'}
+            {togglingSelfPublish ? 'Salvando...' : selfPublishEnabled ? 'Restringir ao admin' : 'Liberar p/ colaboradores'}
           </button>
         </div>
 

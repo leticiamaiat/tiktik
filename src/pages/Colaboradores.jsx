@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { listProfiles, setAuthorized, deleteProfile } from '../services/profiles'
-import { setMunicipalityAdmin } from '../services/plans'
+import { setMunicipalityAdmin, listMunicipalityPlans } from '../services/plans'
+import { DEFAULT_PLAN } from '../constants/plans'
 
 export default function Colaboradores() {
   const { user } = useAuth()
@@ -14,6 +15,7 @@ export default function Colaboradores() {
   const [city, setCity] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [planByKey, setPlanByKey] = useState(new Map())
 
   const municipality = user?.municipality
   const isAdmin = !!user?.is_admin
@@ -45,6 +47,12 @@ export default function Colaboradores() {
   }, [municipality, isSuperAdmin, search, city, startDate, endDate])
 
   useEffect(() => { load() }, [load])
+
+  // Plano real de cada município (mesma fonte do Header/Municípios) — não
+  // depende de filtro, só carrega uma vez.
+  useEffect(() => {
+    listMunicipalityPlans().then(setPlanByKey).catch((err) => console.error('listMunicipalityPlans falhou:', err))
+  }, [])
 
   const handleClearFilters = () => {
     setSearch('')
@@ -218,7 +226,9 @@ export default function Colaboradores() {
                     {p.empresa_parceira ? `Empresa: ${p.empresa_parceira}` : `Secretaria: ${p.secretaria || '—'}`}
                   </p>
                   <p>Cadastrado em: {cadastradoEm}</p>
-                  <p className="text-gray-400">Prefeitura de {p.municipality || '—'} - {p.plan || 'Plano Básico'}</p>
+                  <p className="text-gray-400">
+                    Prefeitura de {p.municipality || '—'} - Plano {planByKey.get(`${p.municipality}|${p.state}`) || DEFAULT_PLAN}
+                  </p>
                 </div>
 
                 <div className="text-sm text-gray-600 whitespace-nowrap px-2">
