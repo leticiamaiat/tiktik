@@ -143,7 +143,9 @@ export default function Home() {
   const dayLimitReached = tikLimit != null && todayTikCount >= tikLimit
   const shareLimit = user?.planLimits?.sharesPerDay ?? 0
   const shareQuotaLeft = Math.max(0, shareLimit - sharesToday)
-  const canShareNow = shareLimit > 0 && shareQuotaLeft > 0
+  // undefined (perfil ainda sem settings carregadas) trata como liberado.
+  const selfPublishAllowed = user?.selfPublishEnabled !== false
+  const canShareNow = selfPublishAllowed && shareLimit > 0 && shareQuotaLeft > 0
 
   const makeTikDisabled = isBlocked || dayLimitReached
   const makeTikTitle = isBlocked
@@ -315,7 +317,11 @@ export default function Home() {
             />
 
             {igConn && form.photo && (
-              shareLimit === 0 ? (
+              !selfPublishAllowed ? (
+                <p className="text-xs text-gray-400 mb-4">
+                  A publicação no Instagram desta prefeitura é centralizada pelo admin, pela tela Publicação nas Redes.
+                </p>
+              ) : shareLimit === 0 ? (
                 <p className="text-xs text-gray-400 mb-4">
                   Seu plano ({user?.plan}) não inclui compartilhamento em redes sociais.
                 </p>

@@ -6,7 +6,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, updateLegendaRedes } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
-import { getPlanUsage, recordShare } from '../services/plans'
+import { getPlanUsage, recordShare, setSelfPublishEnabled } from '../services/plans'
 import { areas } from '../data/mockData'
 
 // Legenda padrão sugerida quando o tik ainda não tem uma legenda de redes
@@ -36,6 +36,8 @@ export default function PublicacaoRedes() {
   const [publishingId, setPublishingId] = useState(null)
   const [publishedIds, setPublishedIds] = useState(() => new Set())
   const [sharesToday, setSharesToday] = useState(0)
+  const [selfPublishEnabled, setSelfPublishEnabledState] = useState(user?.selfPublishEnabled ?? true)
+  const [togglingSelfPublish, setTogglingSelfPublish] = useState(false)
 
   const shareLimit = user?.planLimits?.sharesPerDay ?? 0
   const shareQuotaLeft = Math.max(0, shareLimit - sharesToday)
@@ -115,6 +117,26 @@ export default function PublicacaoRedes() {
     }
   }
 
+  const handleToggleSelfPublish = async () => {
+    const next = !selfPublishEnabled
+    setTogglingSelfPublish(true)
+    setSelfPublishEnabledState(next) // otimista
+    try {
+      await setSelfPublishEnabled(next)
+      toast.success(
+        next
+          ? 'Colaboradores agora podem publicar direto ao criar um tik.'
+          : 'Publicação no Instagram agora é só por aqui.'
+      )
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao atualizar quem pode publicar')
+      setSelfPublishEnabledState(!next)
+    } finally {
+      setTogglingSelfPublish(false)
+    }
+  }
+
   const handleStartEdit = (tik) => {
     setEditingId(tik.id)
     setDraftText(tik.legenda_redes ?? defaultCaption(tik))
@@ -170,6 +192,26 @@ export default function PublicacaoRedes() {
             <span> · plano {user?.plan} sem compartilhamento em redes</span>
           )}
         </p>
+
+        <div className="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl shadow-sm px-4 py-3 mb-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-700">Quem publica no Instagram?</p>
+            <p className="text-xs text-gray-400">
+              {selfPublishEnabled
+                ? 'Qualquer colaborador autorizado pode marcar "publicar no Instagram" ao criar um tik.'
+                : 'Só você autoriza por aqui — o checkbox de publicar some na tela de criar tik.'}
+            </p>
+          </div>
+          <button
+            onClick={handleToggleSelfPublish}
+            disabled={togglingSelfPublish}
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${
+              selfPublishEnabled ? 'bg-tik-orange text-white hover:bg-tik-dark' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            }`}
+          >
+            {togglingSelfPublish ? 'Salvando...' : selfPublishEnabled ? 'Colaboradores publicam' : 'Só eu publico'}
+          </button>
+        </div>
 
         {connChecked && !conn && (
           <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">

@@ -1,22 +1,24 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProfile, updateProfile, createProfile, deleteProfile } from '../services/profiles'
-import { getMunicipalityPlan } from '../services/plans'
+import { getMunicipalitySettings } from '../services/plans'
 import { DEFAULT_PLAN, planLimits } from '../constants/plans'
 import { signIn, signOut, signUp, updatePassword, updateEmail } from '../services/auth'
 
 const AuthContext = createContext(null)
 
-// Anexa ao usuário o plano da prefeitura dele (municipalities) e os limites
-// correspondentes. Resiliente: qualquer falha cai no plano padrão.
+// Anexa ao usuário o plano da prefeitura dele (municipalities), os limites
+// correspondentes e se a publicação direta no Instagram está liberada pro
+// município. Resiliente: qualquer falha cai nos padrões (Básico, liberado).
 async function withPlan(base) {
   let plan = DEFAULT_PLAN
+  let selfPublishEnabled = true
   try {
-    plan = await getMunicipalityPlan(base.municipality, base.state)
+    ;({ plan, selfPublishEnabled } = await getMunicipalitySettings(base.municipality, base.state))
   } catch (err) {
-    console.error('getMunicipalityPlan falhou, usando plano padrão:', err)
+    console.error('getMunicipalitySettings falhou, usando padrões:', err)
   }
-  return { ...base, plan, planLimits: planLimits(plan) }
+  return { ...base, plan, planLimits: planLimits(plan), selfPublishEnabled }
 }
 
 export function AuthProvider({ children }) {

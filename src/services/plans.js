@@ -9,17 +9,29 @@ function startOfTodayUTC() {
   return d.toISOString()
 }
 
-// Plano da prefeitura (municipality + state). Sem linha em `municipalities` = 'Básico'.
-export async function getMunicipalityPlan(municipality, state) {
-  if (!municipality || !state) return DEFAULT_PLAN
+// Plano + configurações da prefeitura (municipality + state). Sem linha em
+// `municipalities` = plano 'Básico' com publicação direta liberada (padrão).
+export async function getMunicipalitySettings(municipality, state) {
+  if (!municipality || !state) return { plan: DEFAULT_PLAN, selfPublishEnabled: true }
   const { data, error } = await supabase
     .from('municipalities')
-    .select('plan')
+    .select('plan, self_publish_enabled')
     .eq('municipality', municipality)
     .eq('state', state)
     .maybeSingle()
   if (error) throw error
-  return data?.plan || DEFAULT_PLAN
+  return {
+    plan: data?.plan || DEFAULT_PLAN,
+    selfPublishEnabled: data?.self_publish_enabled ?? true,
+  }
+}
+
+// Liga/desliga a publicação direta no Instagram ao criar um tik (Home.jsx),
+// para o MUNICÍPIO do usuário logado. Só o admin do município (ou o super
+// admin) consegue — checado dentro do RPC.
+export async function setSelfPublishEnabled(enabled) {
+  const { error } = await supabase.rpc('set_self_publish_enabled', { p_enabled: enabled })
+  if (error) throw error
 }
 
 // Consumo do dia da prefeitura: quantos tiks e quantos compartilhamentos já
