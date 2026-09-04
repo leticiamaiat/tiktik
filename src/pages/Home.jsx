@@ -11,7 +11,9 @@ import { getMunicipalityConnection, publishToInstagram } from '../services/uploa
 import { getPlanUsage, recordShare } from '../services/plans'
 import { areas } from '../data/mockData'
 
-const mapContainerStyle = { width: '100%', height: '410px' }
+// Mapa ocupa 60% da altura da tela (pedido: "mapa em 60%"); a lista de tiks
+// abaixo fica em fluxo normal — rolar a página é o que faz o mapa sumir.
+const mapContainerStyle = { width: '100%', height: '60vh' }
 const modalMapStyle = { width: '100%', height: '100%' }
 const defaultCenter = { lat: -23.5015, lng: -47.4526 }
 
