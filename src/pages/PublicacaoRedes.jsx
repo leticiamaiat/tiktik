@@ -6,6 +6,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, updateLegendaRedes } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
+import { getPlanUsage, recordShare } from '../services/plans'
 import { areas } from '../data/mockData'
 
 // Legenda padrão sugerida quando o tik ainda não tem uma legenda de redes
@@ -34,6 +35,10 @@ export default function PublicacaoRedes() {
 
   const [publishingId, setPublishingId] = useState(null)
   const [publishedIds, setPublishedIds] = useState(() => new Set())
+  const [sharesToday, setSharesToday] = useState(0)
+
+  const shareLimit = user?.planLimits?.sharesPerDay ?? 0
+  const shareQuotaLeft = Math.max(0, shareLimit - sharesToday)
 
   const [editingId, setEditingId] = useState(null)
   const [draftText, setDraftText] = useState('')
@@ -67,6 +72,9 @@ export default function PublicacaoRedes() {
       .then(setConn)
       .catch(() => setConn(null))
       .finally(() => setConnChecked(true))
+    getPlanUsage(municipality, state)
+      .then((u) => setSharesToday(u.sharesToday))
+      .catch(() => {})
   }, [isAdmin, municipality, state])
 
   const filteredTiks = useMemo(() => {
@@ -87,12 +95,17 @@ export default function PublicacaoRedes() {
   const handlePublishInstagram = async (tik) => {
     if (!conn) return toast.error('Conecte o Instagram do município em Integração com Redes Sociais.')
     if (!tik.image_url) return toast.error('Este tik não possui foto para publicar.')
+    if (shareLimit === 0) return toast.error(`Seu plano (${user?.plan}) não inclui compartilhamento em redes sociais.`)
+    if (shareQuotaLeft <= 0) return toast.error(`Limite de ${shareLimit} compartilhamentos por dia do plano atingido.`)
 
     setPublishingId(tik.id)
     try {
       const caption = tik.legenda_redes || defaultCaption(tik)
       await publishToInstagram(municipality, state, tik.image_url, caption)
       setPublishedIds((prev) => new Set(prev).add(tik.id))
+      setSharesToday((n) => n + 1)
+      recordShare({ tikId: tik.id, userId: user.id, municipality, state })
+        .catch((e) => console.error('recordShare falhou:', e))
       toast.success('Publicado no Instagram!')
     } catch (err) {
       console.error(err)
@@ -149,6 +162,13 @@ export default function PublicacaoRedes() {
         </h1>
         <p className="text-xs text-gray-400 mb-4">
           Centralize aqui a publicação dos tiks nas redes sociais do município.
+          {shareLimit > 0 ? (
+            <span className={shareQuotaLeft === 0 ? 'text-red-500 font-semibold' : ''}>
+              {' '}· {sharesToday}/{shareLimit} compartilhamentos hoje (plano {user?.plan})
+            </span>
+          ) : (
+            <span> · plano {user?.plan} sem compartilhamento em redes</span>
+          )}
         </p>
 
         {connChecked && !conn && (
@@ -235,7 +255,7 @@ export default function PublicacaoRedes() {
               : '—'
             const published = publishedIds.has(tik.id)
             const publishing = publishingId === tik.id
-            const canPublish = !!conn && !!tik.image_url
+            const canPublish = !!conn && !!tik.image_url && shareLimit > 0 && shareQuotaLeft > 0
             const editing = editingId === tik.id
             const savingLegenda = savingId === tik.id
             const legendaAtual = tik.legenda_redes || defaultCaption(tik)
@@ -314,6 +334,10 @@ export default function PublicacaoRedes() {
                         ? 'Conecte o Instagram do município primeiro'
                         : !tik.image_url
                         ? 'Este tik não possui foto'
+                        : shareLimit === 0
+                        ? `Plano ${user?.plan} não inclui compartilhamento em redes`
+                        : shareQuotaLeft <= 0
+                        ? `Limite de ${shareLimit} compartilhamentos/dia atingido`
                         : published
                         ? 'Publicar novamente'
                         : 'Publicar no Instagram'

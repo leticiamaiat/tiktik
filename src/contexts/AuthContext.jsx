@@ -1,9 +1,23 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { getProfile, updateProfile, createProfile, deleteProfile } from '../services/profiles'
+import { getMunicipalityPlan } from '../services/plans'
+import { DEFAULT_PLAN, planLimits } from '../constants/plans'
 import { signIn, signOut, signUp, updatePassword, updateEmail } from '../services/auth'
 
 const AuthContext = createContext(null)
+
+// Anexa ao usuário o plano da prefeitura dele (municipalities) e os limites
+// correspondentes. Resiliente: qualquer falha cai no plano padrão.
+async function withPlan(base) {
+  let plan = DEFAULT_PLAN
+  try {
+    plan = await getMunicipalityPlan(base.municipality, base.state)
+  } catch (err) {
+    console.error('getMunicipalityPlan falhou, usando plano padrão:', err)
+  }
+  return { ...base, plan, planLimits: planLimits(plan) }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -26,12 +40,12 @@ export function AuthProvider({ children }) {
   async function loadProfile(authUser) {
     try {
       const profile = await getProfile(authUser.id)
-      setUser({
+      setUser(await withPlan({
         id: authUser.id,
         email: authUser.email,
         ...profile,
         firstName: (profile.name || authUser.email).split(' ')[0],
-      })
+      }))
     } catch (err) {
       console.error('getProfile falhou, tentando criar/recuperar perfil:', err)
       // Sem confirmação de email o cadastro não pôde criar o perfil ainda
@@ -40,12 +54,12 @@ export function AuthProvider({ children }) {
       try {
         const { name, email, ...extra } = authUser.user_metadata || {}
         const profile = await createProfile(authUser.id, { name, ...extra })
-        setUser({
+        setUser(await withPlan({
           id: authUser.id,
           email: authUser.email,
           ...profile,
           firstName: (profile.name || authUser.email).split(' ')[0],
-        })
+        }))
       } catch (err2) {
         console.error('createProfile também falhou, perfil ficará incompleto (sem municipality/state):', err2)
         setUser({ id: authUser.id, email: authUser.email, firstName: authUser.email.split('@')[0] })
@@ -77,7 +91,13 @@ export function AuthProvider({ children }) {
   const updateUser = async (updates) => {
     if (!user?.id) return
     const updated = await updateProfile(user.id, updates)
-    setUser((prev) => ({ ...prev, ...updated, firstName: (updated.name || prev.name || '').split(' ')[0] }))
+    const merged = { ...user, ...updated, firstName: (updated.name || user.name || '').split(' ')[0] }
+    // Mudou de município/estado? O plano pode ter mudado junto.
+    if ('municipality' in updates || 'state' in updates) {
+      setUser(await withPlan(merged))
+    } else {
+      setUser(merged)
+    }
   }
 
   const changePassword = async (currentPassword, newPassword) => {

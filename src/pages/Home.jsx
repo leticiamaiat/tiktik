@@ -8,6 +8,7 @@ import TikDetailModal from '../components/TikDetailModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, createTik } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
+import { getPlanUsage, recordShare } from '../services/plans'
 import { areas } from '../data/mockData'
 
 const mapContainerStyle = { width: '100%', height: '410px' }
@@ -26,6 +27,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
   const [igConn, setIgConn] = useState(null)
   const [selectedTik, setSelectedTik] = useState(null)
+  const [sharesToday, setSharesToday] = useState(0)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -37,6 +39,9 @@ export default function Home() {
       getMunicipalityConnection(user.municipality, user.state)
         .then(setIgConn)
         .catch(() => setIgConn(null))
+      getPlanUsage(user.municipality, user.state)
+        .then((u) => setSharesToday(u.sharesToday))
+        .catch(() => {})
     }
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -70,6 +75,10 @@ export default function Home() {
       toast.error('Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.')
       return
     }
+    if (dayLimitReached) {
+      toast.error(makeTikTitle)
+      return
+    }
     setSubmitting(true)
     try {
       const newTik = await createTik({
@@ -86,13 +95,20 @@ export default function Home() {
       setForm({ area: '', description: '', photo: null, shareToInstagram: false })
       setPhotoPreview(null)
 
-      if (form.shareToInstagram && newTik.image_url) {
+      if (form.shareToInstagram && canShareNow && newTik.image_url) {
         const caption =
           `${form.description ? form.description + '\n\n' : ''}` +
           `📍 ${locationName}\n🏛️ Prefeitura de Sorocaba`
         const igToast = toast.loading('Publicando no Instagram...')
         try {
           await publishToInstagram(user.municipality, user.state, newTik.image_url, caption)
+          setSharesToday((n) => n + 1)
+          recordShare({
+            tikId: newTik.id,
+            userId: user.id,
+            municipality: user.municipality,
+            state: user.state,
+          }).catch((e) => console.error('recordShare falhou:', e))
           toast.success('Publicado no Instagram!', { id: igToast })
         } catch (igErr) {
           toast.error(`Instagram: ${igErr.message}`, { id: igToast })
@@ -100,7 +116,8 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err)
-      toast.error('Erro ao criar tik')
+      const limitMsg = err?.code === '23514' || /tiks por dia/i.test(err?.message || '')
+      toast.error(limitMsg ? err.message : 'Erro ao criar tik')
     } finally {
       setSubmitting(false)
     }
@@ -117,6 +134,19 @@ export default function Home() {
     (t) => t.created_at && new Date(t.created_at).toDateString() === new Date().toDateString()
   ).length
   const isBlocked = user?.autorizado === false
+
+  const tikLimit = user?.planLimits?.tiksPerDay ?? null
+  const dayLimitReached = tikLimit != null && todayTikCount >= tikLimit
+  const shareLimit = user?.planLimits?.sharesPerDay ?? 0
+  const shareQuotaLeft = Math.max(0, shareLimit - sharesToday)
+  const canShareNow = shareLimit > 0 && shareQuotaLeft > 0
+
+  const makeTikDisabled = isBlocked || dayLimitReached
+  const makeTikTitle = isBlocked
+    ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.'
+    : dayLimitReached
+    ? `Limite de ${tikLimit} tiks por dia do plano ${user?.plan || ''} atingido para a Prefeitura de ${user?.municipality || ''}.`
+    : undefined
 
   return (
     <Layout>
@@ -173,8 +203,8 @@ export default function Home() {
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
           <button
             onClick={handleOpenModal}
-            disabled={isBlocked}
-            title={isBlocked ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.' : undefined}
+            disabled={makeTikDisabled}
+            title={makeTikTitle}
             className="btn-orange px-8 py-3 text-sm font-bold tracking-widest uppercase shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Fazer um TIK
@@ -187,9 +217,14 @@ export default function Home() {
             <span className="text-lg font-black">{totalTikCount}</span>
             <span className="text-[9px]">Total</span>
           </div>
-          <div className="w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md bg-tik-orange">
-            <span className="text-lg font-black">{todayTikCount}</span>
-            <span className="text-[9px]">Hoje</span>
+          <div
+            className={`w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-md ${dayLimitReached ? 'bg-red-500' : 'bg-tik-orange'}`}
+            title={tikLimit != null ? `${todayTikCount} de ${tikLimit} tiks/dia do plano` : undefined}
+          >
+            <span className="text-base font-black leading-none">
+              {todayTikCount}{tikLimit != null ? `/${tikLimit}` : ''}
+            </span>
+            <span className="text-[9px] mt-0.5">Hoje</span>
           </div>
         </div>
       </div>
@@ -271,19 +306,29 @@ export default function Home() {
             />
 
             {igConn && form.photo && (
-              <label className="flex items-center gap-2 cursor-pointer mb-4">
-                <input
-                  type="checkbox"
-                  checked={form.shareToInstagram}
-                  onChange={(e) => setForm((f) => ({ ...f, shareToInstagram: e.target.checked }))}
-                  className="w-4 h-4 accent-pink-500"
-                />
-                <span className="text-sm text-gray-600">
-                  Publicar também no{' '}
-                  <span className="font-semibold text-pink-600">Instagram</span>
-                  <span className="text-gray-400 text-xs"> (@{igConn.ig_username})</span>
-                </span>
-              </label>
+              shareLimit === 0 ? (
+                <p className="text-xs text-gray-400 mb-4">
+                  Seu plano ({user?.plan}) não inclui compartilhamento em redes sociais.
+                </p>
+              ) : !canShareNow ? (
+                <p className="text-xs text-amber-600 mb-4">
+                  Limite de {shareLimit} compartilhamentos por dia do plano atingido para a sua prefeitura.
+                </p>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={form.shareToInstagram}
+                    onChange={(e) => setForm((f) => ({ ...f, shareToInstagram: e.target.checked }))}
+                    className="w-4 h-4 accent-pink-500"
+                  />
+                  <span className="text-sm text-gray-600">
+                    Publicar também no{' '}
+                    <span className="font-semibold text-pink-600">Instagram</span>
+                    <span className="text-gray-400 text-xs"> (@{igConn.ig_username}) · {shareQuotaLeft} de {shareLimit} hoje</span>
+                  </span>
+                </label>
+              )
             )}
 
             <div className="flex justify-center">

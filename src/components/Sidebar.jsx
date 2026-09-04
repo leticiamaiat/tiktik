@@ -12,6 +12,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { label: 'Meus tiks', path: '/meus-tiks' },
     { label: 'Tikgram', path: '/tikgram' },
     { label: 'Colaboradores', path: '/colaboradores' },
+    ...(user?.super_admin ? [{ label: 'Municípios', path: '/municipios' }] : []),
     { label: 'Integração com redes sociais', path: '/integracao-redes' },
     ...(user?.is_admin ? [{ label: 'Publicação nas redes', path: '/publicacao-redes' }] : []),
     { label: 'Editar meu perfil', path: '/editar-perfil' },

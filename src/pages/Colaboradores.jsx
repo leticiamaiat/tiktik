@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ThumbsUp, ThumbsDown, Trash2, X } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Trash2, X, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { listProfiles, setAuthorized, deleteProfile } from '../services/profiles'
+import { setMunicipalityAdmin } from '../services/plans'
 
 export default function Colaboradores() {
   const { user } = useAuth()
@@ -78,13 +79,45 @@ export default function Colaboradores() {
     }
   }
 
+  const handleMakeAdmin = async (profile) => {
+    if (!isSuperAdmin || profile.is_admin) return
+    if (!window.confirm(`Tornar ${profile.name || 'este colaborador'} o administrador da Prefeitura de ${profile.municipality || '—'}?`)) return
+    try {
+      await setMunicipalityAdmin(profile.id)
+      // Só um admin por município: rebaixa o anterior localmente.
+      setProfiles((prev) =>
+        prev.map((p) =>
+          p.municipality === profile.municipality && p.state === profile.state
+            ? { ...p, is_admin: p.id === profile.id }
+            : p
+        )
+      )
+      toast.success(`${profile.name || 'Colaborador'} agora é admin de ${profile.municipality}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao definir admin')
+    }
+  }
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-sm text-gray-500 mb-4">
+        <h1 className="text-sm text-gray-500 mb-1">
           <span className="font-bold text-gray-700">{profiles.length}</span>{' '}
           {isSuperAdmin ? 'Colaboradores de todos os municípios' : `Colaboradores da Prefeitura de ${municipality || '—'}`}
         </h1>
+        <p className="text-xs text-gray-400 mb-4">
+          {!isSuperAdmin && user?.planLimits ? (
+            <>
+              Plano {user.plan}:{' '}
+              <span className={profiles.length > user.planLimits.maxUsers ? 'text-red-500 font-semibold' : ''}>
+                {profiles.length} / {user.planLimits.maxUsers} usuários
+              </span>
+            </>
+          ) : (
+            'Gerencie a autorização e o administrador de cada colaborador.'
+          )}
+        </p>
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -194,6 +227,22 @@ export default function Colaboradores() {
 
                 {canManage ? (
                   <>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => handleMakeAdmin(p)}
+                        disabled={p.is_admin}
+                        title={p.is_admin ? 'Já é o admin deste município' : 'Tornar admin do município'}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
+                          p.is_admin
+                            ? 'bg-gray-100 text-gray-400 cursor-default'
+                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        }`}
+                      >
+                        <ShieldCheck size={14} />
+                        {p.is_admin ? 'Admin' : 'Tornar admin'}
+                      </button>
+                    )}
+
                     <button
                       onClick={() => handleToggleAuth(p)}
                       className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-xs font-bold whitespace-nowrap transition-colors ${

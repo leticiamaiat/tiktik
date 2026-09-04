@@ -12,6 +12,7 @@ import MeusTiks from './pages/MeusTiks'
 import TikDetalhe from './pages/TikDetalhe'
 import Tikgram from './pages/Tikgram'
 import Colaboradores from './pages/Colaboradores'
+import Municipios from './pages/Municipios'
 import IntegracaoRedes from './pages/IntegracaoRedes'
 import PublicacaoRedes from './pages/PublicacaoRedes'
 import EditarPerfil from './pages/EditarPerfil'
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/tik/:id" element={<ProtectedRoute><TikDetalhe /></ProtectedRoute>} />
           <Route path="/tikgram" element={<ProtectedRoute><Tikgram /></ProtectedRoute>} />
           <Route path="/colaboradores" element={<ProtectedRoute><Colaboradores /></ProtectedRoute>} />
+          <Route path="/municipios" element={<ProtectedRoute><Municipios /></ProtectedRoute>} />
           <Route path="/integracao-redes" element={<ProtectedRoute><IntegracaoRedes /></ProtectedRoute>} />
           <Route path="/publicacao-redes" element={<ProtectedRoute><PublicacaoRedes /></ProtectedRoute>} />
           <Route path="/editar-perfil" element={<ProtectedRoute><EditarPerfil /></ProtectedRoute>} />

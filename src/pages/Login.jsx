@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { UFS, SECRETARIAS } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
+import { municipalitySeats } from '../services/plans'
 import logo from '../assets/00_logo_2.png'
 
 const EMPTY_SIGNUP = {
@@ -61,6 +62,16 @@ export default function Login() {
     setLoading(true)
     try {
       if (isSignup) {
+        if (signup.municipality && signup.state) {
+          const seats = await municipalitySeats(signup.municipality, signup.state).catch(() => null)
+          if (seats && seats.max != null && seats.used >= seats.max) {
+            setError(
+              `A Prefeitura de ${signup.municipality} atingiu o limite de ${seats.max} usuários do plano. ` +
+                'Fale com o administrador da prefeitura.'
+            )
+            return
+          }
+        }
         const data = await register(email, password, name, {
           ...signup,
           birthdate: signup.birthdate || null,

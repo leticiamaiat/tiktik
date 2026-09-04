@@ -20,7 +20,7 @@ export default function Header({ onMenuToggle }) {
           <div className="text-right hidden sm:block">
             <p className="text-sm font-semibold text-gray-700 leading-none">{user.firstName || (user.name || user.email || '').split(' ')[0]}</p>
             <p className="text-xs text-gray-400 leading-none mt-0.5">{user.email}</p>
-            <p className="text-xs text-tik-orange leading-none mt-0.5">{user.plan}</p>
+            {user.plan && <p className="text-xs text-tik-orange leading-none mt-0.5">Plano {user.plan}</p>}
           </div>
           {user.avatar_url ? (
             <img
