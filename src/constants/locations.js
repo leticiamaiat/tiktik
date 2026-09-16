@@ -28,4 +28,30 @@ export const UFS = [
   { sigla: 'TO', nome: 'Tocantins' },
 ]
 
-export const SECRETARIAS = ['Saúde', 'Meio Ambiente']
+// Sentinel usado só no <select> pra abrir o campo de texto livre — nunca é
+// o valor final salvo no perfil (Login.jsx/EditarPerfil.jsx resolvem pro
+// texto digitado antes de enviar).
+export const OUTRA_SECRETARIA = 'Outra'
+
+export const SECRETARIAS = [
+  'Administração',
+  'Agricultura e Abastecimento',
+  'Assistência Social',
+  'Comunicação',
+  'Cultura',
+  'Desenvolvimento Econômico',
+  'Educação',
+  'Esporte e Lazer',
+  'Fazenda',
+  'Gabinete do Prefeito',
+  'Governo',
+  'Habitação',
+  'Meio Ambiente',
+  'Obras, Infraestrutura e Mobilidade',
+  'Planejamento',
+  'Saúde',
+  'Segurança Pública',
+  'Serviços Públicos',
+  'Tecnologia e Inovação',
+  'Turismo',
+]

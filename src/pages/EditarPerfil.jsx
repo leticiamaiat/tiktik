@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadAvatar } from '../services/profiles'
-import { UFS, SECRETARIAS } from '../constants/locations'
+import { UFS, SECRETARIAS, OUTRA_SECRETARIA } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
 
 export default function EditarPerfil() {
@@ -13,7 +13,7 @@ export default function EditarPerfil() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: user?.name || '',
-    secretaria: user?.secretaria || '',
+    secretaria: user?.secretaria && !SECRETARIAS.includes(user.secretaria) ? OUTRA_SECRETARIA : (user?.secretaria || ''),
     municipality: user?.municipality || '',
     state: user?.state || '',
     phone: user?.phone || '',
@@ -22,6 +22,10 @@ export default function EditarPerfil() {
     gender: user?.gender || '',
     cep: user?.cep || '',
   })
+  // Perfil já tinha uma secretaria que não está na lista fixa (SECRETARIAS)?
+  // Pré-seleciona "Outra" e já deixa o texto original no campo livre.
+  const secretariaIsCustom = !!user?.secretaria && !SECRETARIAS.includes(user.secretaria)
+  const [secretariaCustom, setSecretariaCustom] = useState(secretariaIsCustom ? user.secretaria : '')
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || null)
   const [saving, setSaving] = useState(false)
@@ -66,13 +70,18 @@ export default function EditarPerfil() {
       toast.error('Você precisa concordar com os Termos de Uso e Política de Privacidade.')
       return
     }
+    if (form.secretaria === OUTRA_SECRETARIA && !secretariaCustom.trim()) {
+      toast.error('Digite o nome da secretaria.')
+      return
+    }
     setSaving(true)
     try {
       let avatar_url = user?.avatar_url
       if (avatarFile) {
         avatar_url = await uploadAvatar(user.id, avatarFile)
       }
-      await updateUser({ ...form, birthdate: form.birthdate || null, avatar_url })
+      const secretaria = form.secretaria === OUTRA_SECRETARIA ? secretariaCustom.trim() : form.secretaria
+      await updateUser({ ...form, secretaria, birthdate: form.birthdate || null, avatar_url })
       toast.success('Perfil atualizado!')
       navigate('/meus-tiks')
     } catch (err) {
@@ -190,7 +199,17 @@ export default function EditarPerfil() {
                   {SECRETARIAS.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
+                  <option value={OUTRA_SECRETARIA}>Outra</option>
                 </select>
+                {form.secretaria === OUTRA_SECRETARIA && (
+                  <input
+                    type="text"
+                    value={secretariaCustom}
+                    onChange={(e) => setSecretariaCustom(e.target.value)}
+                    placeholder="Digite o nome da secretaria"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-2"
+                  />
+                )}
               </div>
               <div className="flex gap-3">
                 <div className="w-28">

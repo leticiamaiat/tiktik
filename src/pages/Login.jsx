@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { UFS, SECRETARIAS } from '../constants/locations'
+import { UFS, SECRETARIAS, OUTRA_SECRETARIA } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
 import { municipalitySeats } from '../services/plans'
 import logo from '../assets/00_logo_2.png'
@@ -23,6 +23,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [signup, setSignup] = useState(EMPTY_SIGNUP)
+  const [secretariaCustom, setSecretariaCustom] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
@@ -74,6 +75,7 @@ export default function Login() {
         }
         const data = await register(email, password, name, {
           ...signup,
+          secretaria: signup.secretaria === OUTRA_SECRETARIA ? secretariaCustom.trim() : signup.secretaria,
           birthdate: signup.birthdate || null,
         })
         if (data.session) {
@@ -83,6 +85,7 @@ export default function Login() {
           setMode('login')
           setPassword('')
           setSignup(EMPTY_SIGNUP)
+          setSecretariaCustom('')
         }
       } else {
         await login(email, password)
@@ -167,7 +170,18 @@ export default function Login() {
                       {SECRETARIAS.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
+                      <option value={OUTRA_SECRETARIA}>Outra</option>
                     </select>
+                    {signup.secretaria === OUTRA_SECRETARIA && (
+                      <input
+                        type="text"
+                        value={secretariaCustom}
+                        onChange={(e) => setSecretariaCustom(e.target.value)}
+                        required
+                        placeholder="Digite o nome da secretaria"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-2"
+                      />
+                    )}
                   </div>
                   <div className="flex gap-3">
                     <div className="w-28">
