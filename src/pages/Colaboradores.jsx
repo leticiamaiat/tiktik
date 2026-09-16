@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { listProfiles, setAuthorized, deleteProfile } from '../services/profiles'
-import { setMunicipalityAdmin, listMunicipalityPlans } from '../services/plans'
+import { setMunicipalityAdmin, unsetMunicipalityAdmin, listMunicipalityPlans } from '../services/plans'
 import { DEFAULT_PLAN } from '../constants/plans'
 
 export default function Colaboradores() {
@@ -104,6 +104,19 @@ export default function Colaboradores() {
     } catch (err) {
       console.error(err)
       toast.error('Erro ao definir admin')
+    }
+  }
+
+  const handleRemoveAdmin = async (profile) => {
+    if (!isSuperAdmin || !profile.is_admin) return
+    if (!window.confirm(`Remover ${profile.name || 'este colaborador'} como administrador da Prefeitura de ${profile.municipality || '—'}? O município fica sem admin até você escolher outro.`)) return
+    try {
+      await unsetMunicipalityAdmin(profile.id)
+      setProfiles((prev) => prev.map((p) => (p.id === profile.id ? { ...p, is_admin: false } : p)))
+      toast.success(`${profile.name || 'Colaborador'} não é mais admin de ${profile.municipality}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao remover admin')
     }
   }
 
@@ -239,17 +252,16 @@ export default function Colaboradores() {
                   <>
                     {isSuperAdmin && (
                       <button
-                        onClick={() => handleMakeAdmin(p)}
-                        disabled={p.is_admin}
-                        title={p.is_admin ? 'Já é o admin deste município' : 'Tornar admin do município'}
+                        onClick={() => (p.is_admin ? handleRemoveAdmin(p) : handleMakeAdmin(p))}
+                        title={p.is_admin ? 'Remover admin do município' : 'Tornar admin do município'}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
                           p.is_admin
-                            ? 'bg-gray-100 text-gray-400 cursor-default'
+                            ? 'bg-purple-600 text-white hover:bg-purple-700'
                             : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
                         }`}
                       >
                         <ShieldCheck size={14} />
-                        {p.is_admin ? 'Admin' : 'Tornar admin'}
+                        {p.is_admin ? 'Remover admin' : 'Tornar admin'}
                       </button>
                     )}
 

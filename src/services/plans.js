@@ -99,6 +99,13 @@ export async function setMunicipalityAdmin(profileId) {
   if (error) throw error
 }
 
+// Tira o admin de alguém sem promover outra pessoa no lugar — município fica
+// sem admin até o super admin escolher outro via setMunicipalityAdmin.
+export async function unsetMunicipalityAdmin(profileId) {
+  const { error } = await supabase.rpc('unset_municipality_admin', { target: profileId })
+  if (error) throw error
+}
+
 export async function setMunicipalityPlan(municipality, state, plan, updatedBy) {
   const { error } = await supabase.from('municipalities').upsert(
     {

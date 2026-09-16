@@ -9,6 +9,9 @@ import {
   deleteMunicipalityConnection,
   generateInstagramConnectionUrl,
   verifyAndSaveConnection,
+  generateFacebookConnectionUrl,
+  verifyAndSaveFacebookConnection,
+  confirmFacebookPage,
 } from '../services/uploadPost'
 
 export default function IntegracaoRedes() {
@@ -18,6 +21,13 @@ export default function IntegracaoRedes() {
   const [conn, setConn] = useState(null)
   const [status, setStatus] = useState('loading') // 'loading' | 'idle' | 'generating' | 'checking' | 'connected'
 
+  const [fbConn, setFbConn] = useState(null)
+  const [fbStatus, setFbStatus] = useState('loading')
+  // Preenchido quando a conta do Meta administra mais de uma Página — nesse
+  // caso a conexão já foi salva sem page_id e falta o usuário escolher.
+  const [fbPendingPages, setFbPendingPages] = useState(null)
+  const [fbSelectingPageId, setFbSelectingPageId] = useState(null)
+
   const municipality = user?.municipality || ''
   const state = user?.state || ''
   const municipalityLabel = municipality && state ? `${municipality} - ${state}` : '...'
@@ -25,6 +35,7 @@ export default function IntegracaoRedes() {
   useEffect(() => {
     if (!municipality || !state) {
       setStatus('idle')
+      setFbStatus('idle')
       return
     }
 
@@ -34,13 +45,24 @@ export default function IntegracaoRedes() {
         else setStatus('idle')
       })
       .catch(() => setStatus('idle'))
+
+    getMunicipalityConnection(municipality, state, 'facebook')
+      .then((data) => {
+        if (data?.page_id) { setFbConn(data); setFbStatus('connected') }
+        else if (data) { setFbConn(data); setFbStatus('idle') } // conectado, mas Página não escolhida ainda
+        else setFbStatus('idle')
+      })
+      .catch(() => setFbStatus('idle'))
   }, [municipality, state])
 
-  // Voltou da página do Upload-post após conectar
+  // Voltou da página do Upload-post após conectar — o platform na URL diz
+  // qual dos dois fluxos (Instagram ou Facebook) verificar.
   useEffect(() => {
     if (searchParams.get('connected') === '1' && municipality && state) {
+      const platform = searchParams.get('platform')
       setSearchParams({}, { replace: true })
-      handleVerify()
+      if (platform === 'facebook') handleVerifyFacebook()
+      else handleVerify()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, municipality, state])
@@ -91,7 +113,77 @@ export default function IntegracaoRedes() {
     }
   }
 
+  const handleConnectFacebook = async () => {
+    if (!municipality || !state) return toast.error('Perfil sem município/estado. Atualize seu perfil.')
+    setFbStatus('generating')
+    try {
+      const { url } = await generateFacebookConnectionUrl(municipality, state)
+      window.location.href = url
+    } catch (err) {
+      toast.error(err.message || 'Erro ao gerar link de conexão')
+      setFbStatus('idle')
+    }
+  }
+
+  const handleVerifyFacebook = async () => {
+    if (!municipality || !state || !user?.id) return
+    setFbStatus('checking')
+    try {
+      const result = await verifyAndSaveFacebookConnection(municipality, state, user.id)
+      if (!result) {
+        setFbStatus('idle')
+        toast.error('Facebook ainda não conectado. Finalize a autorização na aba do Upload-post.')
+        return
+      }
+      const refreshed = await getMunicipalityConnection(municipality, state, 'facebook')
+      setFbConn(refreshed)
+      if (result.page_id) {
+        setFbStatus('connected')
+        setFbPendingPages(null)
+        toast.success(`Facebook "${result.page_name}" conectado para ${municipalityLabel}!`)
+      } else {
+        // Mais de uma Página — falta o usuário escolher qual.
+        setFbStatus('idle')
+        setFbPendingPages(result.pages)
+        toast('Conta conectada! Escolha qual Página vai receber as publicações.')
+      }
+    } catch (err) {
+      setFbStatus('idle')
+      toast.error(err.message || 'Erro ao verificar conexão')
+    }
+  }
+
+  const handleSelectFacebookPage = async (page) => {
+    setFbSelectingPageId(page.id)
+    try {
+      await confirmFacebookPage(municipality, state, user.id, page.id, page.name)
+      const refreshed = await getMunicipalityConnection(municipality, state, 'facebook')
+      setFbConn(refreshed)
+      setFbStatus('connected')
+      setFbPendingPages(null)
+      toast.success(`Página "${page.name}" selecionada!`)
+    } catch (err) {
+      toast.error(err.message || 'Erro ao selecionar a Página')
+    } finally {
+      setFbSelectingPageId(null)
+    }
+  }
+
+  const handleDisconnectFacebook = async () => {
+    try {
+      await deleteMunicipalityConnection(municipality, state, 'facebook')
+      setFbConn(null)
+      setFbStatus('idle')
+      setFbPendingPages(null)
+      toast.success('Facebook desconectado')
+    } catch (err) {
+      toast.error(err.message || 'Erro ao desconectar')
+    }
+  }
+
   const igConnected = status === 'connected'
+  const fbConnected = fbStatus === 'connected' && !!fbConn?.page_id
+  const fbChoosingPage = !!fbPendingPages
 
   return (
     <Layout>
@@ -107,14 +199,14 @@ export default function IntegracaoRedes() {
             <Users size={15} className="text-blue-500 mt-0.5 shrink-0" />
             <p className="text-xs text-blue-700">
               A conexão é <strong>compartilhada por município</strong>: basta um usuário de{' '}
-              <strong>{municipalityLabel}</strong> conectar o Instagram uma vez. Todos os colegas
+              <strong>{municipalityLabel}</strong> conectar cada rede uma vez. Todos os colegas
               do mesmo município poderão publicar automaticamente usando a mesma conta.
             </p>
           </div>
 
           <p className="text-sm text-gray-600 mb-3">
-            Ao integrar o Instagram, ao criar um Tik com foto você poderá publicar automaticamente
-            no perfil conectado, garantindo mais alcance e agilidade na comunicação.
+            Ao integrar Instagram e Facebook, ao criar um Tik com foto você poderá publicar
+            automaticamente nos perfis conectados, garantindo mais alcance e agilidade na comunicação.
           </p>
 
           <p className="text-sm font-semibold text-gray-700 mb-8">
@@ -122,13 +214,95 @@ export default function IntegracaoRedes() {
             pela plataforma parceira.
           </p>
 
-          {/* Facebook — placeholder */}
-          <div className="flex items-center gap-4 border border-blue-200 rounded-lg px-4 py-3 mb-4 opacity-50">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-sm">f</div>
-              <span className="font-bold text-blue-700 tracking-wide text-sm">FACEBOOK</span>
+          {/* Facebook */}
+          <div className={`border rounded-lg px-4 py-4 mb-4 transition-colors ${fbConnected ? 'border-green-400 bg-green-50' : 'border-blue-200'}`}>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-sm flex-shrink-0">f</div>
+                <div>
+                  <span className="font-bold text-blue-700 tracking-wide text-sm">FACEBOOK</span>
+                  {fbConnected && fbConn && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <CheckCircle size={12} className="text-green-500" />
+                      <span className="text-xs text-green-600">
+                        Página "{fbConn.page_name}" · conectado por{' '}
+                        {fbConn.connected_at ? new Date(fbConn.connected_at).toLocaleDateString('pt-BR') : ''}
+                      </span>
+                    </div>
+                  )}
+                  {fbStatus === 'loading' && (
+                    <span className="text-xs text-gray-400">Carregando...</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {fbConnected ? (
+                  <button
+                    onClick={handleDisconnectFacebook}
+                    className="bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    DESCONECTAR
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleConnectFacebook}
+                      disabled={fbStatus === 'generating' || fbStatus === 'checking' || fbStatus === 'loading'}
+                      className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center gap-1.5"
+                    >
+                      <ExternalLink size={14} />
+                      {fbStatus === 'generating' ? 'GERANDO...' : 'CONECTAR'}
+                    </button>
+                    <button
+                      onClick={handleVerifyFacebook}
+                      disabled={fbStatus === 'generating' || fbStatus === 'checking' || fbStatus === 'loading'}
+                      title="Verificar se a conexão foi concluída"
+                      className="bg-gray-100 text-gray-600 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-60 flex items-center gap-1"
+                    >
+                      <RefreshCw size={14} className={fbStatus === 'checking' ? 'animate-spin' : ''} />
+                      {fbStatus === 'checking' ? 'VERIFICANDO...' : 'VERIFICAR'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <span className="text-xs text-gray-400 font-medium">EM BREVE</span>
+
+            {fbChoosingPage && (
+              <div className="mt-3 pt-3 border-t border-blue-100">
+                <p className="text-xs text-gray-600 mb-2">
+                  Essa conta administra várias Páginas — escolha qual vai receber as publicações:
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {fbPendingPages.map((page) => (
+                    <button
+                      key={page.id}
+                      onClick={() => handleSelectFacebookPage(page)}
+                      disabled={fbSelectingPageId === page.id}
+                      className="flex items-center justify-between text-left border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-60"
+                    >
+                      {page.name}
+                      {fbSelectingPageId === page.id && (
+                        <span className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {fbConnected && (
+              <p className="mt-3 pt-3 border-t border-green-200 text-xs text-green-700">
+                Ao criar um Tik com foto, selecione a opção de publicar também no Facebook.
+              </p>
+            )}
+
+            {!fbConnected && !fbChoosingPage && fbStatus !== 'loading' && (
+              <p className="mt-3 pt-3 border-t border-blue-100 text-xs text-gray-500">
+                Clique em <strong>CONECTAR</strong> para ir até a página de autorização. Após conectar,
+                você volta automaticamente para cá — se não confirmar sozinho, clique em <strong>VERIFICAR</strong>.
+              </p>
+            )}
           </div>
 
           {/* Instagram */}
@@ -204,6 +378,17 @@ export default function IntegracaoRedes() {
               </p>
             )}
           </div>
+
+          {!fbConnected && !fbChoosingPage && fbStatus !== 'loading' && (
+            <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700">
+                <strong>Pré-requisito:</strong> é preciso ter uma <strong>Página do Facebook</strong> da
+                prefeitura (não um perfil pessoal). Se ainda não existe uma, crie em{' '}
+                <em>facebook.com/pages/create</em> — qualquer administrador da Página pode autorizar a conexão.
+              </p>
+            </div>
+          )}
 
           {!igConnected && status !== 'loading' && (
             <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">

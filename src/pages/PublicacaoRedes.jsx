@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, updateLegendaRedes } from '../services/tiks'
-import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
+import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from '../services/uploadPost'
 import { getPlanUsage, recordShare, setSelfPublishEnabled } from '../services/plans'
 import { areas } from '../data/mockData'
 
@@ -27,6 +27,7 @@ export default function PublicacaoRedes() {
   const [loading, setLoading] = useState(true)
   const [conn, setConn] = useState(null)
   const [connChecked, setConnChecked] = useState(false)
+  const [fbConn, setFbConn] = useState(null)
 
   const [search, setSearch] = useState('')
   const [area, setArea] = useState('')
@@ -35,6 +36,8 @@ export default function PublicacaoRedes() {
 
   const [publishingId, setPublishingId] = useState(null)
   const [publishedIds, setPublishedIds] = useState(() => new Set())
+  const [fbPublishingId, setFbPublishingId] = useState(null)
+  const [fbPublishedIds, setFbPublishedIds] = useState(() => new Set())
   const [sharesToday, setSharesToday] = useState(0)
   const [selfPublishEnabled, setSelfPublishEnabledState] = useState(user?.selfPublishEnabled ?? true)
   const [togglingSelfPublish, setTogglingSelfPublish] = useState(false)
@@ -74,6 +77,9 @@ export default function PublicacaoRedes() {
       .then(setConn)
       .catch(() => setConn(null))
       .finally(() => setConnChecked(true))
+    getMunicipalityConnection(municipality, state, 'facebook')
+      .then((data) => setFbConn(data?.page_id ? data : null))
+      .catch(() => setFbConn(null))
     getPlanUsage(municipality, state)
       .then((u) => setSharesToday(u.sharesToday))
       .catch(() => {})
@@ -114,6 +120,29 @@ export default function PublicacaoRedes() {
       toast.error(err.message || 'Erro ao publicar no Instagram')
     } finally {
       setPublishingId(null)
+    }
+  }
+
+  const handlePublishFacebook = async (tik) => {
+    if (!fbConn) return toast.error('Conecte o Facebook do município em Integração com Redes Sociais.')
+    if (!tik.image_url) return toast.error('Este tik não possui foto para publicar.')
+    if (shareLimit === 0) return toast.error(`Seu plano (${user?.plan}) não inclui compartilhamento em redes sociais.`)
+    if (shareQuotaLeft <= 0) return toast.error(`Limite de ${shareLimit} compartilhamentos por dia do plano atingido.`)
+
+    setFbPublishingId(tik.id)
+    try {
+      const caption = tik.legenda_redes || defaultCaption(tik)
+      await publishToFacebook(municipality, state, tik.image_url, caption)
+      setFbPublishedIds((prev) => new Set(prev).add(tik.id))
+      setSharesToday((n) => n + 1)
+      recordShare({ tikId: tik.id, userId: user.id, municipality, state })
+        .catch((e) => console.error('recordShare falhou:', e))
+      toast.success('Publicado no Facebook!')
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Erro ao publicar no Facebook')
+    } finally {
+      setFbPublishingId(null)
     }
   }
 
@@ -237,6 +266,20 @@ export default function PublicacaoRedes() {
           </div>
         )}
 
+        {connChecked && !fbConn && (
+          <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+            <p className="text-xs text-amber-700">
+              O Facebook do município ainda não está conectado. Conecte para poder publicar os tiks por aqui.
+            </p>
+            <button
+              onClick={() => navigate('/integracao-redes')}
+              className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 whitespace-nowrap"
+            >
+              Conectar <ExternalLink size={12} />
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <input
@@ -308,6 +351,9 @@ export default function PublicacaoRedes() {
             const published = publishedIds.has(tik.id)
             const publishing = publishingId === tik.id
             const canPublish = !!conn && !!tik.image_url && shareLimit > 0 && shareQuotaLeft > 0
+            const fbPublished = fbPublishedIds.has(tik.id)
+            const fbPublishing = fbPublishingId === tik.id
+            const canPublishFb = !!fbConn && !!tik.image_url && shareLimit > 0 && shareQuotaLeft > 0
             const editing = editingId === tik.id
             const savingLegenda = savingId === tik.id
             const legendaAtual = tik.legenda_redes || defaultCaption(tik)
@@ -405,14 +451,34 @@ export default function PublicacaoRedes() {
                       <span className="text-sm leading-none">📷</span>
                     )}
                   </button>
-                  <span
-                    title="Facebook — em breve"
-                    className="w-9 h-9 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center cursor-not-allowed"
+                  <button
+                    onClick={() => handlePublishFacebook(tik)}
+                    disabled={!canPublishFb || fbPublishing}
+                    title={
+                      !fbConn
+                        ? 'Conecte o Facebook do município primeiro'
+                        : !tik.image_url
+                        ? 'Este tik não possui foto'
+                        : shareLimit === 0
+                        ? `Plano ${user?.plan} não inclui compartilhamento em redes`
+                        : shareQuotaLeft <= 0
+                        ? `Limite de ${shareLimit} compartilhamentos/dia atingido`
+                        : fbPublished
+                        ? 'Publicar novamente'
+                        : 'Publicar no Facebook'
+                    }
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-white transition-opacity disabled:opacity-40 ${
+                      fbPublished ? 'bg-green-500' : 'bg-blue-600'
+                    }`}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/>
-                    </svg>
-                  </span>
+                    {fbPublishing ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
             )
