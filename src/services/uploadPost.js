@@ -154,7 +154,10 @@ export async function verifyAndSaveConnection(municipality, state, userId) {
   const igAccount = data.profile?.social_accounts?.instagram
   if (!igAccount || typeof igAccount !== 'object') return null
 
-  const igUsername = igAccount.username || igAccount.display_name || username
+  // display_name/name primeiro: pra várias contas o upload-post devolve em
+  // "username" o ID numérico da conta (não o @handle real), e como esse valor
+  // não é vazio o || antigo nunca chegava a olhar o nome de verdade.
+  const igUsername = igAccount.display_name || igAccount.name || igAccount.username || username
   localStorage.removeItem(jwtStorageKey(username, 'instagram'))
   await saveConnection(municipality, state, 'instagram', userId, username, { ig_username: igUsername })
   return { ig_username: igUsername, upload_post_username: username }
