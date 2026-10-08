@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { createLead } from '../services/leads'
 import { CheckCircle2, ChevronDown, Send } from 'lucide-react'
 import logoNavy from '../assets/00_logo_2.png'
 import logoWhite from '../assets/00_logo_1.png'
@@ -89,6 +90,14 @@ const PLANS = [
   },
 ]
 
+// WhatsApp do time comercial. Formato do link wa.me: DDI + DDD + número, só
+// dígitos. Trocar aqui atualiza o botão e o texto da seção de contato.
+const WHATSAPP_NUMERO = '5515991482552'
+const WHATSAPP_EXIBICAO = '(15) 99148-2552'
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
+  'Olá! Vim pelo site da tik e quero saber mais sobre a plataforma.'
+)}`
+
 const FAQS = [
   { q: 'A tik é segura e está em conformidade com a LGPD?', a: 'Sim. A tik segue as diretrizes da LGPD, com controle de acesso, criptografia dos dados e políticas claras sobre o uso das informações coletadas.' },
   { q: 'A plataforma integra com sistemas da prefeitura?', a: 'Sim, a tik pode ser integrada aos canais oficiais da prefeitura, como site e redes sociais, e a outros sistemas de gestão conforme a necessidade do município.' },
@@ -103,12 +112,34 @@ const CARGOS = ['Prefeito(a)', 'Secretário(a)', 'Gestor(a) técnico(a)', 'Outro
 export default function Principal() {
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState(null)
-  const [form, setForm] = useState({ nome: '', cargo: '', telefone: '' })
+  const [form, setForm] = useState({ nome: '', cargo: '', telefone: '', plano: '' })
+  const [enviando, setEnviando] = useState(false)
 
-  const handleDemoSubmit = (e) => {
+  // Botão do card de plano: o Básico é grátis, então vai direto pro cadastro.
+  // Os demais levam ao formulário já sabendo qual plano despertou o interesse.
+  const handlePlanClick = (plan) => {
+    if (plan.name === 'Básico') {
+      navigate('/login')
+      return
+    }
+    setForm((f) => ({ ...f, plano: plan.name }))
+    document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleDemoSubmit = async (e) => {
     e.preventDefault()
-    toast.success('Recebemos seu pedido! Em breve entraremos em contato.')
-    setForm({ nome: '', cargo: '', telefone: '' })
+    if (enviando) return
+    setEnviando(true)
+    try {
+      await createLead(form)
+      toast.success('Recebemos seu pedido! Em breve entraremos em contato.')
+      setForm({ nome: '', cargo: '', telefone: '', plano: '' })
+    } catch (err) {
+      console.error(err)
+      toast.error('Não conseguimos enviar seu pedido. Tente de novo ou chame a gente no WhatsApp.')
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
@@ -144,7 +175,7 @@ export default function Principal() {
               Centralize, publique e acompanhe obras e melhorias em um só lugar, <strong className="text-gray-800">com transparência, agilidade e visão de progresso.</strong>
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <a href="#faq" className="btn-orange px-6 py-3">Solicite demonstração</a>
+              <a href="#contato" className="btn-orange px-6 py-3">Solicite demonstração</a>
               <a href="#porque-usar" className="px-6 py-3 rounded-full border-2 border-tik-blue text-tik-blue font-semibold hover:bg-tik-blue hover:text-white transition-colors">
                 Saiba mais
               </a>
@@ -169,7 +200,7 @@ export default function Principal() {
             <p className="mt-4 font-bold text-gray-800">
               Cada avanço registrado é um tik dado. Cada tik, uma entrega reconhecida.
             </p>
-            <a href="#faq" className="btn-orange inline-block mt-6 px-6 py-3">
+            <a href="#contato" className="btn-orange inline-block mt-6 px-6 py-3">
               Quero dar um tik nas entregas da minha cidade
             </a>
           </div>
@@ -197,7 +228,7 @@ export default function Principal() {
           </div>
 
           <div className="text-center mt-10">
-            <a href="#faq" className="btn-orange inline-block px-6 py-3">
+            <a href="#contato" className="btn-orange inline-block px-6 py-3">
               Quero otimizar as entregas da minha gestão
             </a>
           </div>
@@ -255,7 +286,7 @@ export default function Principal() {
             Para cada entrega registrada, validada e divulgada, a gestão dá um tik no que foi feito. E todo mundo vê!
           </p>
           <div className="text-center mt-6">
-            <a href="#faq" className="btn-orange inline-block px-6 py-3">Conheça a tik em ação</a>
+            <a href="#contato" className="btn-orange inline-block px-6 py-3">Conheça a tik em ação</a>
           </div>
         </div>
       </section>
@@ -298,7 +329,7 @@ export default function Principal() {
 
                 <p className="font-bold text-gray-800 mt-6">{plan.price}</p>
                 <button
-                  onClick={() => toast.success(`Interesse registrado no plano ${plan.name}!`)}
+                  onClick={() => handlePlanClick(plan)}
                   className={
                     plan.outline
                       ? 'mt-3 w-full py-2.5 rounded-full border-2 border-gray-300 text-gray-700 font-semibold hover:border-tik-orange hover:text-tik-orange transition-colors'
@@ -313,7 +344,7 @@ export default function Principal() {
 
           <p className="text-center text-gray-400 text-xs mt-8">* compartilhamento no Instagram e Facebook</p>
           <div className="text-center mt-6">
-            <a href="#faq" className="btn-orange inline-block px-6 py-3">Solicite aqui um plano exclusivo</a>
+            <a href="#contato" className="btn-orange inline-block px-6 py-3">Solicite aqui um plano exclusivo</a>
           </div>
         </div>
       </section>
@@ -368,11 +399,27 @@ export default function Principal() {
             <p className="text-white/90 mt-3">
               Fale com nosso time pelo WhatsApp ou preencha o formulário. Retornaremos rapidamente para entender sua realidade e apresentar a melhor forma de dar tiks na sua gestão.
             </p>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-5 bg-white text-tik-orange font-bold rounded-full px-6 py-3 hover:bg-gray-100 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.17 8.17 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.69 8.23-8.24 8.23z" />
+              </svg>
+              {WHATSAPP_EXIBICAO}
+            </a>
           </div>
 
           <div className="max-w-sm md:ml-auto w-full">
             <img src={contatoImg} alt="Homem sorrindo mostrando o app tik no celular" className="w-full max-w-md h-auto mb-6" />
             <form onSubmit={handleDemoSubmit} className="bg-transparent space-y-3 w-full">
+              {form.plano && (
+                <p className="text-white text-sm font-semibold text-center">
+                  Plano de interesse: {form.plano}
+                </p>
+              )}
               <input
                 type="text"
                 placeholder="Nome"
@@ -402,9 +449,10 @@ export default function Principal() {
               />
               <button
                 type="submit"
-                className="w-full bg-tik-navy text-white rounded-full py-3 font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors"
+                disabled={enviando}
+                className="w-full bg-tik-navy text-white rounded-full py-3 font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors disabled:opacity-60"
               >
-                <Send size={16} /> ENVIAR
+                <Send size={16} /> {enviando ? 'ENVIANDO...' : 'ENVIAR'}
               </button>
               <p className="text-center text-white/80 text-xs">Demonstração sem compromisso</p>
               <p className="text-center text-white/80 text-xs">Rápida, objetiva e focada na realidade da sua prefeitura</p>
