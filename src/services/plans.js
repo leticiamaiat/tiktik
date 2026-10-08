@@ -34,40 +34,77 @@ export async function setSelfPublishEnabled(enabled) {
   if (error) throw error
 }
 
-// Consumo do dia da prefeitura: quantos tiks e quantos compartilhamentos já
-// foram feitos hoje (por todos os colaboradores do município).
+// Consumo do dia da prefeitura: quantos tiks e quantas publicações já foram
+// feitas hoje (por todos os colaboradores do município). Feed e story têm
+// cotas separadas no plano, então são contados separadamente.
 export async function getPlanUsage(municipality, state) {
-  if (!municipality || !state) return { tiksToday: 0, sharesToday: 0 }
+  const zero = { tiksToday: 0, feedSharesToday: 0, storySharesToday: 0 }
+  if (!municipality || !state) return zero
   const since = startOfTodayUTC()
 
-  const [tiks, shares] = await Promise.all([
+  const sharesIn = (placement) =>
+    supabase
+      .from('share_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('municipality', municipality)
+      .eq('state', state)
+      .eq('placement', placement)
+      .gte('created_at', since)
+
+  const [tiks, feed, story] = await Promise.all([
     supabase
       .from('tiks')
       .select('id, profiles!inner(municipality, state)', { count: 'exact', head: true })
       .eq('profiles.municipality', municipality)
       .eq('profiles.state', state)
       .gte('created_at', since),
-    supabase
-      .from('share_events')
-      .select('id', { count: 'exact', head: true })
-      .eq('municipality', municipality)
-      .eq('state', state)
-      .gte('created_at', since),
+    sharesIn('feed'),
+    sharesIn('story'),
   ])
 
   if (tiks.error) throw tiks.error
-  if (shares.error) throw shares.error
-  return { tiksToday: tiks.count ?? 0, sharesToday: shares.count ?? 0 }
+  if (feed.error) throw feed.error
+  if (story.error) throw story.error
+  return {
+    tiksToday: tiks.count ?? 0,
+    feedSharesToday: feed.count ?? 0,
+    storySharesToday: story.count ?? 0,
+  }
 }
 
-// Registra um compartilhamento bem-sucedido (chamar SÓ após publicar de verdade).
-export async function recordShare({ tikId, userId, municipality, state, platform = 'instagram' }) {
+// Chave de uma publicação: um tik só pode ir uma vez para cada combinação de
+// rede + feed/story. Mesma chave usada no índice único de share_events.
+export function shareKey(tikId, platform, placement) {
+  return `${tikId}|${platform}|${placement}`
+}
+
+// Set com as publicações que JÁ aconteceram para os tiks informados, para a
+// tela desabilitar o botão em vez de mandar a mesma foto duas vezes.
+export async function getPublishedShares(tikIds) {
+  const ids = (tikIds || []).filter(Boolean)
+  if (ids.length === 0) return new Set()
+
+  const { data, error } = await supabase
+    .from('share_events')
+    .select('tik_id, platform, placement')
+    .in('tik_id', ids)
+  if (error) throw error
+
+  return new Set((data || []).map((r) => shareKey(r.tik_id, r.platform, r.placement)))
+}
+
+// Registra uma publicação bem-sucedida (chamar SÓ após publicar de verdade).
+// O índice único no banco rejeita a segunda tentativa no mesmo tik/rede/placement.
+export async function recordShare({
+  tikId, userId, municipality, state, platform = 'instagram', placement = 'feed',
+}) {
   const { error } = await supabase.from('share_events').insert({
     tik_id: tikId || null,
     user_id: userId,
     municipality,
     state,
     platform,
+    placement,
   })
   if (error) throw error
 }

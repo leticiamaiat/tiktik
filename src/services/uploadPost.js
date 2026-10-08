@@ -280,7 +280,13 @@ export async function confirmFacebookPage(municipality, state, userId, pageId, p
 
 // --- Publish ---
 
-export async function publishToInstagram(municipality, state, imageUrl, caption) {
+// Valores de media_type do upload-post para foto (openapi.json):
+//   Instagram -> IMAGE (feed) | STORIES
+//   Facebook  -> POSTS (feed) | STORIES
+const IG_MEDIA_TYPE = { feed: 'IMAGE', story: 'STORIES' }
+const FB_MEDIA_TYPE = { feed: 'POSTS', story: 'STORIES' }
+
+export async function publishToInstagram(municipality, state, imageUrl, caption, placement = 'feed') {
   if (!API_KEY) throw new Error('VITE_UPLOAD_POST_API_KEY não configurado no .env')
 
   const conn = await getMunicipalityConnection(municipality, state)
@@ -291,6 +297,7 @@ export async function publishToInstagram(municipality, state, imageUrl, caption)
   body.append('platform[]', 'instagram')
   body.append('photos[]', imageUrl)
   body.append('title', caption)
+  body.append('media_type', IG_MEDIA_TYPE[placement] || IG_MEDIA_TYPE.feed)
 
   const res = await fetch(`${BASE}/upload_photos`, {
     method: 'POST',
@@ -299,12 +306,16 @@ export async function publishToInstagram(municipality, state, imageUrl, caption)
   })
   const result = await safeJson(res)
   if (!res.ok || !result.success) {
-    throw new Error('Falha ao publicar no Instagram. Verifique se a conexão ainda está ativa.')
+    throw new Error(
+      placement === 'story'
+        ? 'Falha ao publicar no story do Instagram. Verifique se a conexão ainda está ativa.'
+        : 'Falha ao publicar no Instagram. Verifique se a conexão ainda está ativa.'
+    )
   }
   return result
 }
 
-export async function publishToFacebook(municipality, state, imageUrl, caption) {
+export async function publishToFacebook(municipality, state, imageUrl, caption, placement = 'feed') {
   if (!API_KEY) throw new Error('VITE_UPLOAD_POST_API_KEY não configurado no .env')
 
   const conn = await getMunicipalityConnection(municipality, state, 'facebook')
@@ -316,6 +327,7 @@ export async function publishToFacebook(municipality, state, imageUrl, caption) 
   body.append('platform[]', 'facebook')
   body.append('photos[]', imageUrl)
   body.append('title', caption)
+  body.append('facebook_media_type', FB_MEDIA_TYPE[placement] || FB_MEDIA_TYPE.feed)
   // Manda mesmo com Página fixada — não custa nada e cobre o caso de a
   // pinada ter sido trocada em outro lugar sem essa conexão saber ainda.
   body.append('facebook_page_id', conn.page_id)
@@ -327,7 +339,11 @@ export async function publishToFacebook(municipality, state, imageUrl, caption) 
   })
   const result = await safeJson(res)
   if (!res.ok || !result.success) {
-    throw new Error('Falha ao publicar no Facebook. Verifique se a conexão ainda está ativa.')
+    throw new Error(
+      placement === 'story'
+        ? 'Falha ao publicar no story do Facebook. Verifique se a conexão ainda está ativa.'
+        : 'Falha ao publicar no Facebook. Verifique se a conexão ainda está ativa.'
+    )
   }
   return result
 }

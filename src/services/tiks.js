@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { normalizeImageOrientation } from '../lib/image'
 
 export async function getTiks({ area, startDate, endDate, userId } = {}) {
   let query = supabase
@@ -38,11 +39,14 @@ export async function createTik({ userId, area, description, lat, lng, location,
   let image_url = null
 
   if (imageFile) {
-    const ext = imageFile.name.split('.').pop()
+    // Grava a foto já na orientação final: o Instagram ignora o EXIF e
+    // publicaria a imagem virada se o arquivo do celular subisse como veio.
+    const file = await normalizeImageOrientation(imageFile)
+    const ext = file.name.split('.').pop()
     const path = `tiks/${userId}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('tik-media')
-      .upload(path, imageFile)
+      .upload(path, file, { contentType: file.type })
     if (uploadError) throw uploadError
     const { data } = supabase.storage.from('tik-media').getPublicUrl(path)
     image_url = data.publicUrl

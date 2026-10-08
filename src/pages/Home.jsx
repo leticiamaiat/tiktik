@@ -7,8 +7,9 @@ import TikCard from '../components/TikCard'
 import TikDetailModal from '../components/TikDetailModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, createTik } from '../services/tiks'
-import { getMunicipalityConnection, publishToInstagram } from '../services/uploadPost'
+import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from '../services/uploadPost'
 import { getPlanUsage, recordShare } from '../services/plans'
+import { shareLimitFor, quotaLeft } from '../constants/plans'
 import { areas } from '../data/mockData'
 
 // Mapa "estático": fica fixo ocupando 60% da tela, e só a lista de tiks
@@ -24,14 +25,17 @@ export default function Home() {
   const [tiks, setTiks] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [mapType, setMapType] = useState('roadmap')
-  const [form, setForm] = useState({ area: '', description: '', photo: null, shareToInstagram: false })
+  const [form, setForm] = useState({
+    area: '', description: '', photo: null, shareToIgStory: false, shareToFbStory: false,
+  })
   const [photoPreview, setPhotoPreview] = useState(null)
   const [userLocation, setUserLocation] = useState(defaultCenter)
   const [locationName, setLocationName] = useState('Sorocaba, SP')
   const [submitting, setSubmitting] = useState(false)
   const [igConn, setIgConn] = useState(null)
+  const [fbConn, setFbConn] = useState(null)
   const [selectedTik, setSelectedTik] = useState(null)
-  const [sharesToday, setSharesToday] = useState(0)
+  const [usage, setUsage] = useState({ feedSharesToday: 0, storySharesToday: 0 })
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -43,8 +47,11 @@ export default function Home() {
       getMunicipalityConnection(user.municipality, user.state)
         .then(setIgConn)
         .catch(() => setIgConn(null))
+      getMunicipalityConnection(user.municipality, user.state, 'facebook')
+        .then((data) => setFbConn(data?.page_id ? data : null))
+        .catch(() => setFbConn(null))
       getPlanUsage(user.municipality, user.state)
-        .then((u) => setSharesToday(u.sharesToday))
+        .then((u) => setUsage({ feedSharesToday: u.feedSharesToday, storySharesToday: u.storySharesToday }))
         .catch(() => {})
     }
     if (navigator.geolocation) {
@@ -96,26 +103,38 @@ export default function Home() {
       })
       setTiks((prev) => [newTik, ...prev])
       setShowModal(false)
-      setForm({ area: '', description: '', photo: null, shareToInstagram: false })
+      setForm({ area: '', description: '', photo: null, shareToIgStory: false, shareToFbStory: false })
       setPhotoPreview(null)
 
-      if (form.shareToInstagram && canShareNow && newTik.image_url) {
+      if (canShareNow && newTik.image_url && storyTargets.length > 0) {
         const caption =
           `${form.description ? form.description + '\n\n' : ''}` +
           `📍 ${locationName}\n🏛️ Prefeitura de Sorocaba`
-        const igToast = toast.loading('Publicando no Instagram...')
-        try {
-          await publishToInstagram(user.municipality, user.state, newTik.image_url, caption)
-          setSharesToday((n) => n + 1)
-          recordShare({
-            tikId: newTik.id,
-            userId: user.id,
-            municipality: user.municipality,
-            state: user.state,
-          }).catch((e) => console.error('recordShare falhou:', e))
-          toast.success('Publicado no Instagram!', { id: igToast })
-        } catch (igErr) {
-          toast.error(`Instagram: ${igErr.message}`, { id: igToast })
+        // Cada rede marcada consome uma unidade da cota de story do plano.
+        // Infinity quando o plano é ilimitado, então o decremento não atrapalha.
+        let restante = storyQuotaLeft
+        for (const target of storyTargets) {
+          if (restante <= 0) {
+            toast.error(`Cota de stories do plano acabou — ${target.label} não foi publicado.`)
+            continue
+          }
+          const aviso = toast.loading(`Publicando no story do ${target.label}...`)
+          try {
+            await target.publish(user.municipality, user.state, newTik.image_url, caption, 'story')
+            restante -= 1
+            setUsage((prev) => ({ ...prev, storySharesToday: prev.storySharesToday + 1 }))
+            recordShare({
+              tikId: newTik.id,
+              userId: user.id,
+              municipality: user.municipality,
+              state: user.state,
+              platform: target.id,
+              placement: 'story',
+            }).catch((e) => console.error('recordShare falhou:', e))
+            toast.success(`Publicado no story do ${target.label}!`, { id: aviso })
+          } catch (err) {
+            toast.error(`${target.label}: ${err.message}`, { id: aviso })
+          }
         }
       }
     } catch (err) {
@@ -141,11 +160,19 @@ export default function Home() {
 
   const tikLimit = user?.planLimits?.tiksPerDay ?? null
   const dayLimitReached = tikLimit != null && todayTikCount >= tikLimit
-  const shareLimit = user?.planLimits?.sharesPerDay ?? 0
-  const shareQuotaLeft = Math.max(0, shareLimit - sharesToday)
+  // Ao criar um tik só dá para publicar em STORY. O feed é exclusivo do admin,
+  // pela tela Publicação nas Redes.
+  const storyLimit = shareLimitFor(user?.planLimits, 'story')
+  const storyQuotaLeft = quotaLeft(storyLimit, usage.storySharesToday)
   // undefined (perfil ainda sem settings carregadas) trata como liberado.
   const selfPublishAllowed = user?.selfPublishEnabled !== false
-  const canShareNow = selfPublishAllowed && shareLimit > 0 && shareQuotaLeft > 0
+  // storyLimit null = ilimitado; 0 = o plano não inclui story.
+  const canShareNow = selfPublishAllowed && storyLimit !== 0 && storyQuotaLeft > 0
+
+  const storyTargets = [
+    form.shareToIgStory && igConn && { id: 'instagram', label: 'Instagram', publish: publishToInstagram },
+    form.shareToFbStory && fbConn && { id: 'facebook', label: 'Facebook', publish: publishToFacebook },
+  ].filter(Boolean)
 
   const makeTikDisabled = isBlocked || dayLimitReached
   const makeTikTitle = isBlocked
@@ -316,33 +343,59 @@ export default function Home() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 mb-4 resize-none"
             />
 
-            {igConn && form.photo && (
+            {(igConn || fbConn) && form.photo && (
               !selfPublishAllowed ? (
                 <p className="text-xs text-gray-400 mb-4">
-                  A publicação no Instagram desta prefeitura é centralizada pelo admin, pela tela Publicação nas Redes.
+                  A publicação nas redes desta prefeitura é centralizada pelo admin, pela tela Publicação nas Redes.
                 </p>
-              ) : shareLimit === 0 ? (
+              ) : storyLimit === 0 ? (
                 <p className="text-xs text-gray-400 mb-4">
-                  Seu plano ({user?.plan}) não inclui compartilhamento em redes sociais.
+                  Seu plano ({user?.plan}) não inclui publicação em story.
                 </p>
               ) : !canShareNow ? (
                 <p className="text-xs text-amber-600 mb-4">
-                  Limite de {shareLimit} compartilhamentos por dia do plano atingido para a sua prefeitura.
+                  Limite de {storyLimit} stories por dia do plano atingido para a sua prefeitura.
                 </p>
               ) : (
-                <label className="flex items-center gap-2 cursor-pointer mb-4">
-                  <input
-                    type="checkbox"
-                    checked={form.shareToInstagram}
-                    onChange={(e) => setForm((f) => ({ ...f, shareToInstagram: e.target.checked }))}
-                    className="w-4 h-4 accent-pink-500"
-                  />
-                  <span className="text-sm text-gray-600">
-                    Publicar também no{' '}
-                    <span className="font-semibold text-pink-600">Instagram</span>
-                    <span className="text-gray-400 text-xs"> (@{igConn.ig_username}) · {shareQuotaLeft} de {shareLimit} hoje</span>
-                  </span>
-                </label>
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-1.5">
+                    Publicar também no story
+                    <span className="text-gray-400">
+                      {' '}·{' '}
+                      {storyLimit === null ? 'sem limite diário' : `${storyQuotaLeft} de ${storyLimit} hoje`}
+                    </span>
+                  </p>
+                  {igConn && (
+                    <label className="flex items-center gap-2 cursor-pointer mb-1">
+                      <input
+                        type="checkbox"
+                        checked={form.shareToIgStory}
+                        onChange={(e) => setForm((f) => ({ ...f, shareToIgStory: e.target.checked }))}
+                        className="w-4 h-4 accent-pink-500"
+                      />
+                      <span className="text-sm text-gray-600">
+                        Story do <span className="font-semibold text-pink-600">Instagram</span>
+                        <span className="text-gray-400 text-xs"> (@{igConn.ig_username})</span>
+                      </span>
+                    </label>
+                  )}
+                  {fbConn && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.shareToFbStory}
+                        onChange={(e) => setForm((f) => ({ ...f, shareToFbStory: e.target.checked }))}
+                        className="w-4 h-4 accent-blue-600"
+                      />
+                      <span className="text-sm text-gray-600">
+                        Story do <span className="font-semibold text-blue-600">Facebook</span>
+                        {fbConn.page_name && (
+                          <span className="text-gray-400 text-xs"> ({fbConn.page_name})</span>
+                        )}
+                      </span>
+                    </label>
+                  )}
+                </div>
               )
             )}
 

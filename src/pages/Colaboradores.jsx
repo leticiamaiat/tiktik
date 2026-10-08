@@ -5,7 +5,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { listProfiles, setAuthorized, deleteProfile } from '../services/profiles'
 import { setMunicipalityAdmin, unsetMunicipalityAdmin, listMunicipalityPlans } from '../services/plans'
-import { DEFAULT_PLAN } from '../constants/plans'
+import { DEFAULT_PLAN, formatLimit } from '../constants/plans'
 
 export default function Colaboradores() {
   const { user } = useAuth()
@@ -131,8 +131,12 @@ export default function Colaboradores() {
           {!isSuperAdmin && user?.planLimits ? (
             <>
               Plano {user.plan}:{' '}
-              <span className={profiles.length > user.planLimits.maxUsers ? 'text-red-500 font-semibold' : ''}>
-                {profiles.length} / {user.planLimits.maxUsers} usuários
+              <span className={
+                user.planLimits.maxUsers !== null && profiles.length > user.planLimits.maxUsers
+                  ? 'text-red-500 font-semibold'
+                  : ''
+              }>
+                {profiles.length} / {formatLimit(user.planLimits.maxUsers)} usuários
               </span>
             </>
           ) : (

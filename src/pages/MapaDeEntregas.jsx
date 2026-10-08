@@ -28,6 +28,19 @@ const areaIcons = {
 
 const MAX_CARDS = 4
 
+// Atalhos do filtro de tempo: "ultimos N dias", sempre terminando hoje
+const QUICK_RANGES = [
+  { label: '1 Dia', days: 1 },
+  { label: '7 Dias', days: 7 },
+  { label: '30 Dias', days: 30 },
+]
+
+// yyyy-mm-dd no fuso local (toISOString converteria para UTC e poderia virar o dia)
+function toInputDate(date) {
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
 function pinIcon(color) {
   return {
     path: 'M12 2C7.58 2 4 5.58 4 10c0 5.25 7.05 11.35 7.35 11.61a1 1 0 0 0 1.3 0C12.95 21.35 20 15.25 20 10c0-4.42-3.58-8-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z',
@@ -121,6 +134,7 @@ export default function MapaDeEntregas() {
   const [openCards, setOpenCards] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [quickRange, setQuickRange] = useState(null)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -145,6 +159,29 @@ export default function MapaDeEntregas() {
     tiks.forEach((t) => { if (map[t.area] !== undefined) map[t.area] += 1 })
     return map
   }, [tiks])
+
+  function applyQuickRange(days) {
+    // clicar de novo no atalho ativo limpa o filtro
+    if (quickRange === days) {
+      setQuickRange(null)
+      setStartDate('')
+      setEndDate('')
+      return
+    }
+    const end = new Date()
+    const start = new Date()
+    start.setDate(start.getDate() - (days - 1))
+    setQuickRange(days)
+    setStartDate(toInputDate(start))
+    setEndDate(toInputDate(end))
+  }
+
+  function handleDateChange(setter) {
+    return (e) => {
+      setQuickRange(null) // data escolhida na mao desmarca o atalho
+      setter(e.target.value)
+    }
+  }
 
   function toggleArea(area) {
     setActiveAreas((prev) => {
@@ -201,23 +238,41 @@ export default function MapaDeEntregas() {
             Obras, cultura e educação por toda a cidade.
           </p>
 
+          <div className="flex items-center gap-1.5 mb-2">
+            {QUICK_RANGES.map(({ label, days }) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => applyQuickRange(days)}
+                className={`flex-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                  quickRange === days
+                    ? 'border-tik-orange bg-tik-orange text-white'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2 mb-3">
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={handleDateChange(setStartDate)}
               className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1 text-[11px] text-gray-500"
             />
             <span className="text-gray-300 text-xs">–</span>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={handleDateChange(setEndDate)}
               className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1 text-[11px] text-gray-500"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-3">
+          {/* Legenda/filtro por secretaria: ocupa muito espaço no celular, some lá */}
+          <div className="hidden sm:flex flex-col gap-1.5 border-t border-gray-100 pt-3">
             {areas.map((area) => (
               <button
                 key={area}

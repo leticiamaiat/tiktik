@@ -5,7 +5,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { listProfiles } from '../services/profiles'
 import { listMunicipalities, setMunicipalityAdmin, setMunicipalityPlan } from '../services/plans'
-import { PLAN_NAMES, planLimits } from '../constants/plans'
+import { PLAN_NAMES, planLimits, formatLimit } from '../constants/plans'
 
 export default function Municipios() {
   const { user } = useAuth()
@@ -154,7 +154,7 @@ export default function Municipios() {
           {filtered.map((r, i) => {
             const key = rowKey(r)
             const max = planLimits(r.plan).maxUsers
-            const overLimit = r.user_count > max
+            const overLimit = max !== null && r.user_count > max
             const isPickerOpen = pickerFor === key
             const savingAdmin = savingAdminFor === key
 
@@ -185,7 +185,7 @@ export default function Municipios() {
 
                   <div className="w-28 flex-shrink-0 text-center text-sm">
                     <span className={overLimit ? 'text-red-500 font-bold' : 'text-gray-600'}>
-                      {r.user_count} / {max}
+                      {r.user_count} / {formatLimit(max)}
                     </span>
                   </div>
 
