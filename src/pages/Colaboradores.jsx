@@ -120,6 +120,8 @@ export default function Colaboradores() {
     }
   }
 
+  const aguardandoLiberacao = profiles.filter((p) => p.autorizado === false).length
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -127,6 +129,12 @@ export default function Colaboradores() {
           <span className="font-bold text-gray-700">{profiles.length}</span>{' '}
           {isSuperAdmin ? 'Colaboradores de todos os municípios' : `Colaboradores da Prefeitura de ${municipality || '—'}`}
         </h1>
+        {aguardandoLiberacao > 0 && (
+          <p className="text-xs text-amber-600 font-semibold mb-1">
+            {aguardandoLiberacao} {aguardandoLiberacao === 1 ? 'colaborador aguarda' : 'colaboradores aguardam'} sua
+            liberação para publicar tiks.
+          </p>
+        )}
         <p className="text-xs text-gray-400 mb-4">
           {!isSuperAdmin && user?.planLimits ? (
             <>

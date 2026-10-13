@@ -7,6 +7,7 @@ import TikCard from '../components/TikCard'
 import TikDetailModal from '../components/TikDetailModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, createTik } from '../services/tiks'
+import { montarLegenda } from '../lib/legenda'
 import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from '../services/uploadPost'
 import { getPlanUsage, recordShare } from '../services/plans'
 import { shareLimitFor, quotaLeft } from '../constants/plans'
@@ -83,7 +84,7 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!form.area || submitting) return
     if (user?.autorizado === false) {
-      toast.error('Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.')
+      toast.error('Seu cadastro ainda não foi liberado. O administrador da sua prefeitura precisa autorizar seu acesso.')
       return
     }
     if (dayLimitReached) {
@@ -107,9 +108,7 @@ export default function Home() {
       setPhotoPreview(null)
 
       if (canShareNow && newTik.image_url && storyTargets.length > 0) {
-        const caption =
-          `${form.description ? form.description + '\n\n' : ''}` +
-          `📍 ${locationName}\n🏛️ Prefeitura de Sorocaba`
+        const caption = montarLegenda(newTik)
         // Cada rede marcada consome uma unidade da cota de story do plano.
         // Infinity quando o plano é ilimitado, então o decremento não atrapalha.
         let restante = storyQuotaLeft
@@ -176,7 +175,7 @@ export default function Home() {
 
   const makeTikDisabled = isBlocked || dayLimitReached
   const makeTikTitle = isBlocked
-    ? 'Você não está autorizado a publicar tiks. Fale com o administrador da sua prefeitura.'
+    ? 'Seu cadastro ainda não foi liberado. O administrador da sua prefeitura precisa autorizar seu acesso.'
     : dayLimitReached
     ? `Limite de ${tikLimit} tiks por dia do plano ${user?.plan || ''} atingido para a Prefeitura de ${user?.municipality || ''}.`
     : undefined
@@ -235,7 +234,14 @@ export default function Home() {
           )}
 
           {/* Fazer um TIK */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full px-4 flex flex-col items-center gap-2">
+            {/* Botão desabilitado não dispara tooltip (e no celular não existe
+                hover), então o motivo precisa ficar escrito na tela. */}
+            {makeTikDisabled && (
+              <p className="max-w-sm text-center text-xs font-semibold text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 shadow-lg">
+                {makeTikTitle}
+              </p>
+            )}
             <button
               onClick={handleOpenModal}
               disabled={makeTikDisabled}

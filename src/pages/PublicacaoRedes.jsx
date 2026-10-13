@@ -10,6 +10,7 @@ import {
   getPlanUsage, getPublishedShares, recordShare, setSelfPublishEnabled, shareKey,
 } from '../services/plans'
 import { shareLimitFor, quotaLeft, isUnlimited } from '../constants/plans'
+import { montarLegenda } from '../lib/legenda'
 import { areas } from '../data/mockData'
 
 const IG_GRADIENT = 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'
@@ -56,12 +57,9 @@ const PLACEMENTS = [
   { id: 'story', label: 'Story' },
 ]
 
-// Legenda padrão sugerida quando o tik ainda não tem uma legenda de redes
-// personalizada (legenda_redes) — só o texto do tik, sem a secretaria.
-// Usada tanto pra exibir quanto pra publicar.
-function defaultCaption(tik) {
-  return tik.description || ''
-}
+// Legenda sugerida quando o tik ainda não tem uma legenda de redes
+// personalizada (legenda_redes). Usada tanto pra exibir quanto pra publicar.
+const defaultCaption = montarLegenda
 
 export default function PublicacaoRedes() {
   const { user } = useAuth()

@@ -81,7 +81,10 @@ export default function Login() {
         if (data.session) {
           navigate('/home')
         } else {
-          setInfo('Conta criada! Verifique seu email para confirmar o cadastro antes de entrar.')
+          setInfo(
+            'Conta criada! Verifique seu email para confirmar o cadastro. Depois de entrar, ' +
+            'o administrador da sua prefeitura precisa liberar seu acesso para você publicar tiks.'
+          )
           setMode('login')
           setPassword('')
           setSignup(EMPTY_SIGNUP)
