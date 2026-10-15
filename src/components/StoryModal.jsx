@@ -91,7 +91,9 @@ export default function StoryModal({ tik, onClose, onSaved }) {
             </div>
 
             <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
-              <Strong>ATENÇÃO:</Strong> Esta legenda vale só para o story, não altera a legenda da publicação no feed. Se quiser mudar a legenda da publicação, vá para a tela de edição do post.
+              <strong>ATENÇÃO:</strong> Esta legenda vale só para o story, não altera a legenda da
+              publicação no feed. Se quiser mudar a legenda da publicação, vá para a tela de edição
+              do post.
             </p>
 
             <div className="flex items-center gap-3 mt-auto pt-5">
