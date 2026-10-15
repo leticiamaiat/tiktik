@@ -1,15 +1,17 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import { X, Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
 import TikCard from '../components/TikCard'
 import TikDetailModal from '../components/TikDetailModal'
+import StoryPreview from '../components/StoryPreview'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, createTik } from '../services/tiks'
 import { montarLegenda } from '../lib/legenda'
 import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from '../services/uploadPost'
 import { getPlanUsage, recordShare } from '../services/plans'
+import { buildStoryImage, dadosDoStory } from '../services/storyMedia'
 import { shareLimitFor, quotaLeft } from '../constants/plans'
 import { areas } from '../data/mockData'
 
@@ -109,6 +111,11 @@ export default function Home() {
 
       if (canShareNow && newTik.image_url && storyTargets.length > 0) {
         const caption = montarLegenda(newTik)
+        // Story não mostra legenda: o texto precisa ir desenhado na imagem,
+        // já no enquadramento 1080x1920. Monta uma vez só e usa nas duas redes.
+        const storyImageUrl = await buildStoryImage({
+          tik: newTik, userId: user.id, photoFile: form.photo,
+        })
         // Cada rede marcada consome uma unidade da cota de story do plano.
         // Infinity quando o plano é ilimitado, então o decremento não atrapalha.
         let restante = storyQuotaLeft
@@ -119,7 +126,7 @@ export default function Home() {
           }
           const aviso = toast.loading(`Publicando no story do ${target.label}...`)
           try {
-            await target.publish(user.municipality, user.state, newTik.image_url, caption, 'story')
+            await target.publish(user.municipality, user.state, storyImageUrl, caption, 'story')
             restante -= 1
             setUsage((prev) => ({ ...prev, storySharesToday: prev.storySharesToday + 1 }))
             recordShare({
@@ -144,6 +151,23 @@ export default function Home() {
       setSubmitting(false)
     }
   }
+
+  // O tik ainda não existe, mas a prévia precisa dos mesmos campos que o
+  // createTik vai gravar — assim o que aparece aqui é o que vai ser publicado.
+  const storyDados = useMemo(
+    () =>
+      dadosDoStory(
+        {
+          area: form.area,
+          description: form.description,
+          location: locationName,
+          created_at: new Date().toISOString(),
+          profiles: { municipality: user?.municipality, state: user?.state },
+        },
+        form.photo
+      ),
+    [form.area, form.description, form.photo, locationName, user?.municipality, user?.state]
+  )
 
   const today = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -363,44 +387,57 @@ export default function Home() {
                   Limite de {storyLimit} stories por dia do plano atingido para a sua prefeitura.
                 </p>
               ) : (
-                <div className="mb-4">
-                  <p className="text-xs text-gray-500 mb-1.5">
-                    Publicar também no story
-                    <span className="text-gray-400">
-                      {' '}·{' '}
-                      {storyLimit === null ? 'sem limite diário' : `${storyQuotaLeft} de ${storyLimit} hoje`}
-                    </span>
-                  </p>
-                  {igConn && (
-                    <label className="flex items-center gap-2 cursor-pointer mb-1">
-                      <input
-                        type="checkbox"
-                        checked={form.shareToIgStory}
-                        onChange={(e) => setForm((f) => ({ ...f, shareToIgStory: e.target.checked }))}
-                        className="w-4 h-4 accent-pink-500"
-                      />
-                      <span className="text-sm text-gray-600">
-                        Story do <span className="font-semibold text-pink-600">Instagram</span>
-                        <span className="text-gray-400 text-xs"> (@{igConn.ig_username})</span>
+                <div className="mb-4 flex gap-3">
+                  <StoryPreview
+                    dados={storyDados}
+                    className="w-[112px] h-[199px]"
+                    nota="como vai sair"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 mb-1.5">
+                      Publicar também no story
+                      <span className="text-gray-400">
+                        {' '}·{' '}
+                        {storyLimit === null ? 'sem limite diário' : `${storyQuotaLeft} de ${storyLimit} hoje`}
                       </span>
-                    </label>
-                  )}
-                  {fbConn && (
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.shareToFbStory}
-                        onChange={(e) => setForm((f) => ({ ...f, shareToFbStory: e.target.checked }))}
-                        className="w-4 h-4 accent-blue-600"
-                      />
-                      <span className="text-sm text-gray-600">
-                        Story do <span className="font-semibold text-blue-600">Facebook</span>
-                        {fbConn.page_name && (
-                          <span className="text-gray-400 text-xs"> ({fbConn.page_name})</span>
-                        )}
-                      </span>
-                    </label>
-                  )}
+                    </p>
+                    {igConn && (
+                      <label className="flex items-center gap-2 cursor-pointer mb-1">
+                        <input
+                          type="checkbox"
+                          checked={form.shareToIgStory}
+                          onChange={(e) => setForm((f) => ({ ...f, shareToIgStory: e.target.checked }))}
+                          className="w-4 h-4 accent-pink-500"
+                        />
+                        <span className="text-sm text-gray-600">
+                          Story do <span className="font-semibold text-pink-600">Instagram</span>
+                          <span className="text-gray-400 text-xs"> (@{igConn.ig_username})</span>
+                        </span>
+                      </label>
+                    )}
+                    {fbConn && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.shareToFbStory}
+                          onChange={(e) => setForm((f) => ({ ...f, shareToFbStory: e.target.checked }))}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        <span className="text-sm text-gray-600">
+                          Story do <span className="font-semibold text-blue-600">Facebook</span>
+                          {fbConn.page_name && (
+                            <span className="text-gray-400 text-xs"> ({fbConn.page_name})</span>
+                          )}
+                        </span>
+                      </label>
+                    )}
+
+                    <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                      O texto sai da descrição acima. O admin pode reescrever só a legenda do
+                      story depois, em Publicação nas Redes.
+                    </p>
+                  </div>
                 </div>
               )
             )}

@@ -76,6 +76,19 @@ export async function updateLegendaRedes(tikId, legenda) {
   return data
 }
 
+// Legenda exclusiva do story (o texto desenhado na imagem). Fica num campo
+// próprio: mexer nela nunca muda a legenda do feed, e vice-versa.
+export async function updateLegendaStory(tikId, legenda) {
+  const { data, error } = await supabase
+    .from('tiks')
+    .update({ legenda_story: legenda })
+    .eq('id', tikId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteTik(tikId) {
   const { error } = await supabase.from('tiks').delete().eq('id', tikId)
   if (error) throw error

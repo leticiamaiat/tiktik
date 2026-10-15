@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, ExternalLink, Pencil, Check } from 'lucide-react'
+import { X, ExternalLink, Pencil, Check, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
+import StoryModal from '../components/StoryModal'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks, updateLegendaRedes } from '../services/tiks'
 import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from '../services/uploadPost'
@@ -10,6 +11,7 @@ import {
   getPlanUsage, getPublishedShares, recordShare, setSelfPublishEnabled, shareKey,
 } from '../services/plans'
 import { shareLimitFor, quotaLeft, isUnlimited } from '../constants/plans'
+import { buildStoryImage } from '../services/storyMedia'
 import { montarLegenda } from '../lib/legenda'
 import { areas } from '../data/mockData'
 
@@ -103,6 +105,8 @@ export default function PublicacaoRedes() {
   const [editingId, setEditingId] = useState(null)
   const [draftText, setDraftText] = useState('')
   const [savingId, setSavingId] = useState(null)
+  // Tik aberto no modal de legenda/prévia do story (null = modal fechado).
+  const [storyTik, setStoryTik] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -197,7 +201,14 @@ export default function PublicacaoRedes() {
     setBusyKey(key)
     try {
       const caption = tik.legenda_redes || defaultCaption(tik)
-      await network.publish(municipality, state, tik.image_url, caption, placement.id)
+      // No feed a legenda aparece ao lado da foto; no story, não aparece nada.
+      // Por isso o story vai com uma imagem montada à parte: foto enquadrada
+      // em 1080x1920 e a legenda desenhada por cima.
+      const imageUrl =
+        placement.id === 'story'
+          ? await buildStoryImage({ tik, userId: user.id })
+          : tik.image_url
+      await network.publish(municipality, state, imageUrl, caption, placement.id)
 
       // Só registra depois de publicar de verdade. Se o insert falhar (ex.: o
       // índice único pegou uma corrida), a tela já marcou como publicado — que
@@ -495,6 +506,15 @@ export default function PublicacaoRedes() {
                       </button>
                     </div>
                   )}
+
+                  {tik.image_url && (
+                    <button
+                      onClick={() => setStoryTik(tik)}
+                      className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-tik-orange hover:text-tik-dark"
+                    >
+                      <Eye size={12} /> Legenda e prévia do story
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0 text-xs text-gray-600">
@@ -551,6 +571,17 @@ export default function PublicacaoRedes() {
           })}
         </div>
       </div>
+
+      {storyTik && (
+        <StoryModal
+          tik={storyTik}
+          onClose={() => setStoryTik(null)}
+          onSaved={(atualizado) => {
+            setTiks((prev) => prev.map((t) => (t.id === atualizado.id ? atualizado : t)))
+            setStoryTik(null)
+          }}
+        />
+      )}
     </Layout>
   )
 }

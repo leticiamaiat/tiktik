@@ -10,7 +10,7 @@ const JPEG_QUALITY = 0.95
 // createImageBitmap é o caminho explícito; o <img> é o fallback (navegadores
 // atuais também aplicam EXIF ao desenhar um <img> no canvas). Nenhum dos dois
 // faz rotação manual, então não há risco de girar duas vezes.
-async function decodeUpright(file) {
+export async function decodeUpright(file) {
   if (typeof createImageBitmap === 'function') {
     try {
       return await createImageBitmap(file, { imageOrientation: 'from-image' })
@@ -30,12 +30,12 @@ async function decodeUpright(file) {
   }
 }
 
-function canvasToBlob(canvas) {
+export function canvasToBlob(canvas, quality = JPEG_QUALITY) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('canvas.toBlob falhou'))),
       'image/jpeg',
-      JPEG_QUALITY
+      quality
     )
   })
 }
