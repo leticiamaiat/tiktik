@@ -29,7 +29,7 @@ function chaveDe(dados) {
 export default function StoryPreview({
   dados,
   className = 'w-[216px] h-[384px]',
-  nota = '1080 × 1920 · como vai sair',
+  nota = '1080 × 1920',
 }) {
   const [previa, setPrevia] = useState(null)
   const [montando, setMontando] = useState(true)

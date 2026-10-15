@@ -391,7 +391,7 @@ export default function Home() {
                   <StoryPreview
                     dados={storyDados}
                     className="w-[112px] h-[199px]"
-                    nota="como vai sair"
+                    nota={null}
                   />
 
                   <div className="flex-1 min-w-0">
