@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Copy, Check, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Navigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { areas } from '../data/mockData'
+import { listMunicipalities } from '../services/plans'
 import {
   WIDGET_LAYOUTS, WIDGET_DEFAULTS, WIDGET_LIMIT_MAX, buildWidgetUrl, buildMapUrl, widgetParamEntries,
 } from '../constants/widget'
@@ -59,10 +61,36 @@ const escapeAttr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;
 export default function IncorporarSite() {
   const { user } = useAuth()
   const isSuperAdmin = !!user?.super_admin
+  const canAccess = isSuperAdmin || !!user?.is_admin
   const origin = window.location.origin
 
+  // Admin do município: sempre a prefeitura do próprio perfil, sem edição.
+  // Super admin: escolhe entre as prefeituras existentes (começa na dele).
   const [municipality, setMunicipality] = useState(user?.municipality || '')
   const [state, setState] = useState(user?.state || '')
+  const [municipalityOptions, setMunicipalityOptions] = useState([])
+
+  useEffect(() => {
+    if (!isSuperAdmin) return
+    listMunicipalities()
+      .then((rows) => {
+        const seen = new Map()
+        for (const r of rows) {
+          if (r.municipality && r.state) seen.set(`${r.municipality}|${r.state}`, { municipality: r.municipality, state: r.state })
+        }
+        const list = [...seen.values()].sort((a, b) => a.municipality.localeCompare(b.municipality, 'pt-BR'))
+        setMunicipalityOptions(list)
+        // Super admin sem prefeitura no perfil: já seleciona a primeira.
+        if (!user?.municipality && list[0]) {
+          setMunicipality(list[0].municipality)
+          setState(list[0].state)
+        }
+      })
+      .catch((err) => {
+        console.error(err)
+        toast.error('Não foi possível carregar as prefeituras.')
+      })
+  }, [isSuperAdmin, user?.municipality])
   const [layout, setLayout] = useState(WIDGET_DEFAULTS.layout)
   const [limit, setLimit] = useState(WIDGET_DEFAULTS.limit)
   const [area, setArea] = useState(WIDGET_DEFAULTS.area)
@@ -104,6 +132,8 @@ export default function IncorporarSite() {
     return () => window.removeEventListener('message', onMsg)
   }, [origin])
 
+  if (!canAccess) return <Navigate to="/home" replace />
+
   const label = 'block text-xs font-semibold text-gray-600 mb-1'
   const input = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white'
 
@@ -115,9 +145,9 @@ export default function IncorporarSite() {
           Mostre os últimos tiks da sua prefeitura no site oficial. Escolha o formato, copie o código e cole no HTML da página.
           Ao clicar num tik, o visitante abre o mapa de entregas da prefeitura (sem precisar de login) com aquele tik em destaque.
         </p>
-        {user?.municipality && user?.state && (
+        {ready && (
           <a
-            href={buildMapUrl(window.location.origin, { municipality: user.municipality, state: user.state })}
+            href={buildMapUrl(origin, { municipality: config.municipality, state: config.state })}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-tik-orange -mt-4 mb-6"
@@ -129,15 +159,33 @@ export default function IncorporarSite() {
         <div className="grid lg:grid-cols-[380px_1fr] gap-6">
           {/* Configuração */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4 h-fit">
-            <div className="grid grid-cols-[1fr_80px] gap-2">
-              <div>
-                <label className={label}>Município</label>
-                <input className={input} value={municipality} onChange={(e) => setMunicipality(e.target.value)} disabled={!isSuperAdmin} />
-              </div>
-              <div>
-                <label className={label}>UF</label>
-                <input className={input} value={state} maxLength={2} onChange={(e) => setState(e.target.value)} disabled={!isSuperAdmin} />
-              </div>
+            <div>
+              <label className={label}>Prefeitura</label>
+              {isSuperAdmin ? (
+                <select
+                  className={input}
+                  value={`${municipality}|${state}`}
+                  onChange={(e) => {
+                    const [m, uf] = e.target.value.split('|')
+                    setMunicipality(m)
+                    setState(uf)
+                  }}
+                >
+                  {/* Garante que a prefeitura atual aparece mesmo antes da lista carregar */}
+                  {municipality && !municipalityOptions.some((o) => o.municipality === municipality && o.state === state) && (
+                    <option value={`${municipality}|${state}`}>{municipality} · {state}</option>
+                  )}
+                  {municipalityOptions.map((o) => (
+                    <option key={`${o.municipality}|${o.state}`} value={`${o.municipality}|${o.state}`}>
+                      {o.municipality} · {o.state}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
+                  {municipality ? `${municipality} · ${state}` : 'Sem prefeitura no perfil'}
+                </p>
+              )}
             </div>
 
             <div>
