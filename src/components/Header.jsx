@@ -10,9 +10,16 @@ export default function Header({ onMenuToggle }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white shadow-sm h-14 flex items-center justify-between px-4">
       {/* Logo */}
-      <button onClick={() => navigate('/home')} className="flex items-center cursor-pointer">
+      <button onClick={() => navigate(user ? '/home' : '/')} className="flex items-center cursor-pointer">
         <img src={logo} alt="Tik" className="h-8 w-auto select-none" />
       </button>
+
+      {/* Páginas públicas (ex.: mapa de entregas) também usam o Header */}
+      {!user && (
+        <button onClick={() => navigate('/login')} className="btn-orange text-sm px-4 py-1.5">
+          Entrar
+        </button>
+      )}
 
       {/* User info + menu */}
       {user && (

@@ -17,6 +17,8 @@ import IntegracaoRedes from './pages/IntegracaoRedes'
 import PublicacaoRedes from './pages/PublicacaoRedes'
 import EditarPerfil from './pages/EditarPerfil'
 import DocumentosLegais from './pages/DocumentosLegais'
+import IncorporarSite from './pages/IncorporarSite'
+import Widget from './pages/Widget'
 
 export default function App() {
   return (
@@ -26,10 +28,12 @@ export default function App() {
         <Routes>
           <Route path="/principal" element={<Principal />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/widget" element={<Widget />} />
 
           <Route path="/" element={<Principal />} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/mapa-de-entregas" element={<ProtectedRoute><MapaDeEntregas /></ProtectedRoute>} />
+          {/* Público: aberto pelo widget do site da prefeitura, sem login */}
+          <Route path="/mapa-de-entregas" element={<MapaDeEntregas />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/meus-tiks" element={<ProtectedRoute><MeusTiks /></ProtectedRoute>} />
           <Route path="/tik/:id" element={<ProtectedRoute><TikDetalhe /></ProtectedRoute>} />
@@ -39,6 +43,7 @@ export default function App() {
           <Route path="/integracao-redes" element={<ProtectedRoute><IntegracaoRedes /></ProtectedRoute>} />
           <Route path="/publicacao-redes" element={<ProtectedRoute><PublicacaoRedes /></ProtectedRoute>} />
           <Route path="/editar-perfil" element={<ProtectedRoute><EditarPerfil /></ProtectedRoute>} />
+          <Route path="/incorporar-site" element={<ProtectedRoute><IncorporarSite /></ProtectedRoute>} />
           <Route path="/documentos-legais" element={<ProtectedRoute><DocumentosLegais /></ProtectedRoute>} />
           <Route path="/termos-de-uso" element={<Navigate to="/documentos-legais" replace />} />
 

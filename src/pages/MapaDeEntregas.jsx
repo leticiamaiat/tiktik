@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
 import {
   X, Heart, Calendar, HeartPulse, HandHeart, GraduationCap,
@@ -7,6 +8,7 @@ import {
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { getTiks } from '../services/tiks'
+import { getPublicTiks, toTikShape } from '../services/widget'
 import { areas, areaColors } from '../data/mockData'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 56px)' }
@@ -27,6 +29,10 @@ const areaIcons = {
 }
 
 const MAX_CARDS = 4
+
+// Teto de tiks carregados no mapa público (o RPC também limita em 500).
+const PUBLIC_LIMIT = 500
+const FOCUS_ZOOM = 16
 
 // Atalhos do filtro de tempo: "ultimos N dias", sempre terminando hoje
 const QUICK_RANGES = [
@@ -55,7 +61,8 @@ function pinIcon(color) {
 
 function DeliveryCard({ tik, offset, onClose }) {
   const Icon = areaIcons[tik.area]
-  const likeCount = (tik.likes || []).length
+  // like_count vem do RPC público; tiks do getTiks trazem a lista de likes.
+  const likeCount = tik.like_count ?? (tik.likes || []).length
 
   return (
     <div
@@ -126,8 +133,20 @@ function DeliveryCard({ tik, offset, onClose }) {
   )
 }
 
+// Página aberta a qualquer pessoa, logada ou não.
+//   /mapa-de-entregas?municipio=Sorocaba&uf=SP          -> tiks daquela prefeitura
+//   /mapa-de-entregas?municipio=Sorocaba&uf=SP&tik=<id> -> idem, com o tik aberto
+// (é para cá que o clique no widget incorporado leva). Sem município na URL,
+// usuário logado vê o mapa como antes; visitante vê o aviso para usar o link
+// da prefeitura.
 export default function MapaDeEntregas() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const paramMunicipality = searchParams.get('municipio') || ''
+  const paramState = (searchParams.get('uf') || '').toUpperCase()
+  const focusTikId = searchParams.get('tik')
+  const publicMode = !!(paramMunicipality && paramState)
+  const municipalityName = paramMunicipality || user?.municipality
   const [tiks, setTiks] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeAreas, setActiveAreas] = useState(() => new Set(areas))
@@ -135,6 +154,10 @@ export default function MapaDeEntregas() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [quickRange, setQuickRange] = useState(null)
+  const [map, setMap] = useState(null)
+  // O enquadramento inicial (focar o tik do link ou caber todos os pinos)
+  // acontece uma vez só; depois o usuário mexe no mapa à vontade.
+  const framedRef = useRef(false)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -142,16 +165,48 @@ export default function MapaDeEntregas() {
 
   useEffect(() => {
     setLoading(true)
-    getTiks({ startDate: startDate || undefined, endDate: endDate || undefined })
+    const range = { startDate: startDate || undefined, endDate: endDate || undefined }
+    const request = publicMode
+      ? getPublicTiks({ municipality: paramMunicipality, state: paramState, limit: PUBLIC_LIMIT, ...range })
+          .then((rows) => rows.map(toTikShape))
+      : user
+        ? getTiks(range)
+        : Promise.resolve([])
+    request
       .then(setTiks)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [startDate, endDate])
+  }, [startDate, endDate, publicMode, paramMunicipality, paramState, user])
 
   const visibleTiks = useMemo(
     () => tiks.filter((t) => t.lat && t.lng && activeAreas.has(t.area)),
     [tiks, activeAreas]
   )
+
+  useEffect(() => {
+    if (!map || loading || framedRef.current) return
+    framedRef.current = true
+
+    const focus = focusTikId && tiks.find((t) => String(t.id) === focusTikId)
+    if (focus) {
+      setOpenCards([focus])
+      if (focus.lat && focus.lng) {
+        map.panTo({ lat: Number(focus.lat), lng: Number(focus.lng) })
+        map.setZoom(FOCUS_ZOOM)
+        return
+      }
+    }
+
+    const located = tiks.filter((t) => t.lat && t.lng)
+    if (located.length === 1) {
+      map.panTo({ lat: Number(located[0].lat), lng: Number(located[0].lng) })
+      map.setZoom(FOCUS_ZOOM)
+    } else if (located.length > 1) {
+      const bounds = new window.google.maps.LatLngBounds()
+      located.forEach((t) => bounds.extend({ lat: Number(t.lat), lng: Number(t.lng) }))
+      map.fitBounds(bounds, 80)
+    }
+  }, [map, loading, tiks, focusTikId])
 
   const countsByArea = useMemo(() => {
     const map = {}
@@ -212,11 +267,17 @@ export default function MapaDeEntregas() {
     <Layout>
       <div className="relative">
         {isLoaded ? (
-          <GoogleMap mapContainerStyle={mapContainerStyle} center={defaultCenter} zoom={13}>
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={defaultCenter}
+            zoom={13}
+            onLoad={setMap}
+            onUnmount={() => setMap(null)}
+          >
             {visibleTiks.map((tik) => (
               <Marker
                 key={tik.id}
-                position={{ lat: tik.lat, lng: tik.lng }}
+                position={{ lat: Number(tik.lat), lng: Number(tik.lng) }}
                 title={tik.area}
                 icon={pinIcon(areaColors[tik.area] || '#E07B22')}
                 onClick={() => handleMarkerClick(tik)}
@@ -232,7 +293,7 @@ export default function MapaDeEntregas() {
         {/* Painel: título + filtros + legenda */}
         <div className="absolute top-4 left-4 z-10 w-72 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg p-4">
           <h1 className="text-lg font-bold text-gray-800 leading-tight">
-            Ações que transformam<br />{user?.municipality || 'sua cidade'}
+            Ações que transformam<br />{municipalityName || 'sua cidade'}
           </h1>
           <p className="text-xs text-gray-500 mt-1 mb-3">
             Obras, cultura e educação por toda a cidade.
@@ -303,12 +364,18 @@ export default function MapaDeEntregas() {
               </div>
             )
           })}
-          {!loading && tiks.length === 0 && (
+          {!loading && tiks.length === 0 && (publicMode || user) && (
             <div className="bg-white rounded-xl shadow-lg px-4 py-2.5 text-xs text-gray-400">
               Nenhuma entrega no período selecionado.
             </div>
           )}
         </div>
+
+        {!publicMode && !user && (
+          <div className="absolute inset-x-4 bottom-4 z-10 sm:left-auto sm:w-96 bg-white rounded-xl shadow-lg px-4 py-3 text-sm text-gray-600">
+            Abra o mapa pelo link ou pelo site da sua prefeitura para ver as entregas da cidade.
+          </div>
+        )}
 
         {/* Cards de detalhe das entregas selecionadas */}
         {openCards.length > 0 && (

@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, onClose }) {
     ...(user?.super_admin ? [{ label: 'Municípios', path: '/municipios' }] : []),
     { label: 'Integração com redes sociais', path: '/integracao-redes' },
     ...(user?.is_admin ? [{ label: 'Publicação nas redes', path: '/publicacao-redes' }] : []),
+    ...(user?.is_admin || user?.super_admin ? [{ label: 'Incorporar no site', path: '/incorporar-site' }] : []),
     { label: 'Editar meu perfil', path: '/editar-perfil' },
     { label: 'Políticas e Termos', path: '/documentos-legais' },
     { label: 'Sair', path: null },
