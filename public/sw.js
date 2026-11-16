@@ -2,7 +2,7 @@
 // app shell available offline. It deliberately never touches cross-origin
 // requests (Supabase auth/API calls) so login/session state is always fetched
 // fresh over the network.
-const CACHE_NAME = 'tik-shell-v2'
+const CACHE_NAME = 'tik-shell-v3'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/pwa-192.png', '/pwa-512.png', '/apple-touch-icon.png']
 
 self.addEventListener('install', (event) => {

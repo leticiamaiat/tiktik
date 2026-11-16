@@ -132,6 +132,8 @@ export default function Login() {
             <label className="block text-sm text-gray-600 mb-1">Email</label>
             <input
               type="email"
+              name="email"
+              autoComplete={isSignup ? 'email' : 'username'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-tik-orange"
@@ -144,6 +146,8 @@ export default function Login() {
             <label className="block text-sm text-gray-600 mb-1">Senha</label>
             <input
               type="password"
+              name="password"
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-tik-orange"

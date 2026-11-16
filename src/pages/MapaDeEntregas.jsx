@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { getTiks } from '../services/tiks'
 import { getPublicTiks, toTikShape } from '../services/widget'
 import { areas, areaColors } from '../data/mockData'
+import { mapOptions, pinIcon, fitMunicipality } from '../lib/mapStyle'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 56px)' }
 const defaultCenter = { lat: -23.5015, lng: -47.4526 }
@@ -45,18 +46,6 @@ const QUICK_RANGES = [
 function toInputDate(date) {
   const offset = date.getTimezoneOffset() * 60000
   return new Date(date.getTime() - offset).toISOString().slice(0, 10)
-}
-
-function pinIcon(color) {
-  return {
-    path: 'M12 2C7.58 2 4 5.58 4 10c0 5.25 7.05 11.35 7.35 11.61a1 1 0 0 0 1.3 0C12.95 21.35 20 15.25 20 10c0-4.42-3.58-8-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z',
-    fillColor: color,
-    fillOpacity: 1,
-    strokeColor: '#ffffff',
-    strokeWeight: 1.5,
-    scale: 1.7,
-    anchor: new window.google.maps.Point(12, 22),
-  }
 }
 
 function DeliveryCard({ tik, offset, onClose }) {
@@ -197,16 +186,26 @@ export default function MapaDeEntregas() {
       }
     }
 
-    const located = tiks.filter((t) => t.lat && t.lng)
-    if (located.length === 1) {
-      map.panTo({ lat: Number(located[0].lat), lng: Number(located[0].lng) })
-      map.setZoom(FOCUS_ZOOM)
-    } else if (located.length > 1) {
-      const bounds = new window.google.maps.LatLngBounds()
-      located.forEach((t) => bounds.extend({ lat: Number(t.lat), lng: Number(t.lng) }))
-      map.fitBounds(bounds, 80)
+    // Sem tik em foco: centraliza no município (o do link público ou o do
+    // cadastro do usuário). Se não der para localizar a cidade, cai no
+    // enquadramento pelos pinos.
+    const state = publicMode ? paramState : user?.state
+    fitMunicipality(map, municipalityName, state).then((ok) => {
+      if (!ok) fitTiks()
+    })
+
+    function fitTiks() {
+      const located = tiks.filter((t) => t.lat && t.lng)
+      if (located.length === 1) {
+        map.panTo({ lat: Number(located[0].lat), lng: Number(located[0].lng) })
+        map.setZoom(FOCUS_ZOOM)
+      } else if (located.length > 1) {
+        const bounds = new window.google.maps.LatLngBounds()
+        located.forEach((t) => bounds.extend({ lat: Number(t.lat), lng: Number(t.lng) }))
+        map.fitBounds(bounds, 80)
+      }
     }
-  }, [map, loading, tiks, focusTikId])
+  }, [map, loading, tiks, focusTikId, municipalityName, publicMode, paramState, user?.state])
 
   const countsByArea = useMemo(() => {
     const map = {}
@@ -271,6 +270,7 @@ export default function MapaDeEntregas() {
             mapContainerStyle={mapContainerStyle}
             center={defaultCenter}
             zoom={13}
+            options={mapOptions}
             onLoad={setMap}
             onUnmount={() => setMap(null)}
           >

@@ -13,7 +13,8 @@ import { getMunicipalityConnection, publishToInstagram, publishToFacebook } from
 import { getPlanUsage, recordShare } from '../services/plans'
 import { buildStoryImage, dadosDoStory } from '../services/storyMedia'
 import { shareLimitFor, quotaLeft } from '../constants/plans'
-import { areas } from '../data/mockData'
+import { areas, areaColors } from '../data/mockData'
+import { mapOptions, pinIcon } from '../lib/mapStyle'
 
 // Mapa "estático": fica fixo ocupando 60% da tela, e só a lista de tiks
 // abaixo dele rola (o botão FAZER UM TIK, dentro do mapa, fica sempre visível).
@@ -229,6 +230,7 @@ export default function Home() {
               center={userLocation}
               zoom={11}
               mapTypeId={mapType}
+              options={mapOptions}
             >
               <Marker
                 position={userLocation}
@@ -247,6 +249,7 @@ export default function Home() {
                   key={tik.id}
                   position={{ lat: tik.lat, lng: tik.lng }}
                   title={tik.area}
+                  icon={pinIcon(areaColors[tik.area])}
                   onClick={() => setSelectedTik(tik)}
                 />
               ))}
@@ -338,8 +341,8 @@ export default function Home() {
 
               <div className="flex-1 h-28 rounded-lg overflow-hidden border border-gray-200">
                 {isLoaded ? (
-                  <GoogleMap mapContainerStyle={modalMapStyle} center={userLocation} zoom={14} options={{ disableDefaultUI: true }}>
-                    <Marker position={userLocation} />
+                  <GoogleMap mapContainerStyle={modalMapStyle} center={userLocation} zoom={14} options={{ ...mapOptions, disableDefaultUI: true }}>
+                    <Marker position={userLocation} icon={pinIcon()} />
                   </GoogleMap>
                 ) : (
                   <div className="w-full h-full bg-gray-200 flex items-center justify-center">

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
+import { areaColors } from '../data/mockData'
+import { mapOptions, pinIcon, fitMunicipality } from '../lib/mapStyle'
 import Layout from '../components/Layout'
 import TikCard from '../components/TikCard'
 import TikDetailModal from '../components/TikDetailModal'
@@ -18,6 +20,7 @@ export default function MeusTiks() {
   const [loading, setLoading] = useState(true)
   const [selectedTik, setSelectedTik] = useState(null)
   const [mapType, setMapType] = useState('roadmap')
+  const [map, setMap] = useState(null)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -32,9 +35,16 @@ export default function MeusTiks() {
   }, [user?.id])
 
   const tiksWithCoords = useMemo(() => tiks.filter((t) => t.lat && t.lng), [tiks])
-  const center = tiksWithCoords[0]
+  // Com município cadastrado o enquadramento vem do fitMunicipality abaixo;
+  // o center fica fixo para não sobrescrevê-lo quando os tiks carregarem.
+  const center = !user?.municipality && tiksWithCoords[0]
     ? { lat: tiksWithCoords[0].lat, lng: tiksWithCoords[0].lng }
     : defaultCenter
+
+  // Centraliza no município em que o usuário está cadastrado
+  useEffect(() => {
+    if (map && user?.municipality) fitMunicipality(map, user.municipality, user.state)
+  }, [map, user?.municipality, user?.state])
 
   return (
     <Layout>
@@ -87,12 +97,13 @@ export default function MeusTiks() {
         </div>
 
         {isLoaded ? (
-          <GoogleMap mapContainerStyle={mapContainerStyle} center={center} zoom={12} mapTypeId={mapType}>
+          <GoogleMap mapContainerStyle={mapContainerStyle} center={center} zoom={12} mapTypeId={mapType} options={mapOptions} onLoad={setMap} onUnmount={() => setMap(null)}>
             {tiksWithCoords.map((tik) => (
               <Marker
                 key={tik.id}
                 position={{ lat: tik.lat, lng: tik.lng }}
                 title={tik.area}
+                icon={pinIcon(areaColors[tik.area])}
                 onClick={() => setSelectedTik(tik)}
               />
             ))}

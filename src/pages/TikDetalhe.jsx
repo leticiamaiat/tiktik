@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
+import { areaColors } from '../data/mockData'
+import { mapOptions, pinIcon } from '../lib/mapStyle'
 import { ThumbsUp, ChevronLeft, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Layout from '../components/Layout'
@@ -170,8 +172,9 @@ export default function TikDetalhe() {
                   mapContainerStyle={{ width: '100%', height: '100%' }}
                   center={{ lat: tik.lat, lng: tik.lng }}
                   zoom={15}
+                  options={mapOptions}
                 >
-                  <Marker position={{ lat: tik.lat, lng: tik.lng }} />
+                  <Marker position={{ lat: tik.lat, lng: tik.lng }} icon={pinIcon(areaColors[tik.area])} />
                 </GoogleMap>
               ) : (
                 <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">
