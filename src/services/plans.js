@@ -1,13 +1,10 @@
 import { supabase } from '../lib/supabase'
 import { DEFAULT_PLAN } from '../constants/plans'
+import { brDayStart } from '../lib/brTime'
 
-// Início do dia em UTC — casa com o date_trunc('day', now()) das triggers do
-// banco (Supabase roda em UTC por padrão).
-function startOfTodayUTC() {
-  const d = new Date()
-  d.setUTCHours(0, 0, 0, 0)
-  return d.toISOString()
-}
+// Início do dia no horário de Brasília — casa com o date_trunc('day', now())
+// das triggers do banco, que roda com timezone America/Sao_Paulo
+// (supabase/migrations/0003_timezone_brasil.sql).
 
 // Plano + configurações da prefeitura (municipality + state). Sem linha em
 // `municipalities` = plano 'Básico' com publicação direta liberada (padrão).
@@ -40,7 +37,7 @@ export async function setSelfPublishEnabled(enabled) {
 export async function getPlanUsage(municipality, state) {
   const zero = { tiksToday: 0, feedSharesToday: 0, storySharesToday: 0 }
   if (!municipality || !state) return zero
-  const since = startOfTodayUTC()
+  const since = brDayStart()
 
   const sharesIn = (placement) =>
     supabase

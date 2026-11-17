@@ -11,6 +11,7 @@ import { getTiks } from '../services/tiks'
 import { getPublicTiks, toTikShape } from '../services/widget'
 import { areas, areaColors } from '../data/mockData'
 import { mapOptions, pinIcon, fitMunicipality } from '../lib/mapStyle'
+import { brDate, addDays } from '../lib/brTime'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 56px)' }
 const defaultCenter = { lat: -23.5015, lng: -47.4526 }
@@ -41,12 +42,6 @@ const QUICK_RANGES = [
   { label: '7 Dias', days: 7 },
   { label: '30 Dias', days: 30 },
 ]
-
-// yyyy-mm-dd no fuso local (toISOString converteria para UTC e poderia virar o dia)
-function toInputDate(date) {
-  const offset = date.getTimezoneOffset() * 60000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
-}
 
 function DeliveryCard({ tik, offset, onClose }) {
   const Icon = areaIcons[tik.area]
@@ -158,14 +153,14 @@ export default function MapaDeEntregas() {
     const request = publicMode
       ? getPublicTiks({ municipality: paramMunicipality, state: paramState, limit: PUBLIC_LIMIT, ...range })
           .then((rows) => rows.map(toTikShape))
-      : user
-        ? getTiks(range)
+      : user?.municipality && user?.state
+        ? getTiks({ ...range, municipality: user.municipality, state: user.state })
         : Promise.resolve([])
     request
       .then(setTiks)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [startDate, endDate, publicMode, paramMunicipality, paramState, user])
+  }, [startDate, endDate, publicMode, paramMunicipality, paramState, user?.municipality, user?.state])
 
   const visibleTiks = useMemo(
     () => tiks.filter((t) => t.lat && t.lng && activeAreas.has(t.area)),
@@ -222,12 +217,11 @@ export default function MapaDeEntregas() {
       setEndDate('')
       return
     }
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - (days - 1))
+    // Dias de calendário de Brasília, terminando hoje
+    const end = brDate()
     setQuickRange(days)
-    setStartDate(toInputDate(start))
-    setEndDate(toInputDate(end))
+    setStartDate(addDays(end, -(days - 1)))
+    setEndDate(end)
   }
 
   function handleDateChange(setter) {

@@ -15,6 +15,7 @@ import { buildStoryImage, dadosDoStory } from '../services/storyMedia'
 import { shareLimitFor, quotaLeft } from '../constants/plans'
 import { areas, areaColors } from '../data/mockData'
 import { mapOptions, pinIcon } from '../lib/mapStyle'
+import { brDate, BR_TZ } from '../lib/brTime'
 
 // Mapa "estático": fica fixo ocupando 60% da tela, e só a lista de tiks
 // abaixo dele rola (o botão FAZER UM TIK, dentro do mapa, fica sempre visível).
@@ -46,8 +47,8 @@ export default function Home() {
   })
 
   useEffect(() => {
-    getTiks().then(setTiks).catch(console.error)
     if (user?.municipality && user?.state) {
+      getTiks({ municipality: user.municipality, state: user.state }).then(setTiks).catch(console.error)
       getMunicipalityConnection(user.municipality, user.state)
         .then(setIgConn)
         .catch(() => setIgConn(null))
@@ -64,7 +65,8 @@ export default function Home() {
         () => setUserLocation(defaultCenter)
       )
     }
-  }, [])
+    // Recarrega quando o perfil (município/estado) termina de carregar
+  }, [user?.municipality, user?.state])
 
   const handleOpenModal = useCallback(() => {
     if (navigator.geolocation) {
@@ -171,14 +173,15 @@ export default function Home() {
   )
 
   const today = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: BR_TZ,
   })
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
 
-  const municipalityTiks = tiks.filter((t) => t.profiles?.municipality === user?.municipality)
+  // getTiks já vem filtrado pelo município + estado do usuário
+  const municipalityTiks = tiks
   const totalTikCount = municipalityTiks.length
   const todayTikCount = municipalityTiks.filter(
-    (t) => t.created_at && new Date(t.created_at).toDateString() === new Date().toDateString()
+    (t) => t.created_at && brDate(t.created_at) === brDate()
   ).length
   const isBlocked = user?.autorizado === false
 

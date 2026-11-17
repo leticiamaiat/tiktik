@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { brDayStart, brDayEnd } from '../lib/brTime'
 
 // Tiks públicos de uma prefeitura (widget incorporável e mapa público).
 // Vai pelo RPC public_tiks_widget, que funciona sem login e só devolve campos
@@ -9,8 +10,8 @@ export async function getPublicTiks({ municipality, state, area, limit = 12, sta
     p_state: state,
     p_area: area || null,
     p_limit: limit,
-    p_start: startDate ? new Date(`${startDate}T00:00:00`).toISOString() : null,
-    p_end: endDate ? new Date(`${endDate}T23:59:59`).toISOString() : null,
+    p_start: startDate ? brDayStart(startDate) : null,
+    p_end: endDate ? brDayEnd(endDate) : null,
   })
   if (error) throw error
   return data || []

@@ -6,6 +6,7 @@ import {
 import Layout from '../components/Layout'
 import { getDashboardStats } from '../services/tiks'
 import { areaColors } from '../data/mockData'
+import { BR_TZ } from '../lib/brTime'
 
 const ORANGE = '#E07B22'
 const ORANGE_LIGHT = '#F5C99E'
@@ -21,10 +22,10 @@ function buildStats(rawTiks) {
     byAreaMap[area] = (byAreaMap[area] || 0) + 1
 
     const date = new Date(tik.created_at)
-    const day = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    const day = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: BR_TZ })
     byDayMap[day] = (byDayMap[day] || 0) + 1
 
-    const month = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+    const month = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: BR_TZ })
       .replace('. ', '/')
       .replace('.', '/')
     byMonthMap[month] = (byMonthMap[month] || 0) + 1

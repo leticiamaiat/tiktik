@@ -1,20 +1,28 @@
 import { supabase } from '../lib/supabase'
 import { normalizeImageOrientation } from '../lib/image'
+import { brDayStart, brDayEnd } from '../lib/brTime'
 
-export async function getTiks({ area, startDate, endDate, userId } = {}) {
+// municipality + state: só os tiks de autores daquela prefeitura (o join
+// vira inner para o filtro em profiles valer sobre a linha do tik).
+export async function getTiks({ area, startDate, endDate, userId, municipality, state } = {}) {
+  const byMunicipality = !!(municipality && state)
   let query = supabase
     .from('tiks')
     .select(`
       *,
-      profiles (id, name, avatar_url, secretaria, municipality, state, phone),
+      profiles${byMunicipality ? '!inner' : ''} (id, name, avatar_url, secretaria, municipality, state, phone),
       likes (id, user_id)
     `)
     .order('created_at', { ascending: false })
 
+  if (byMunicipality) {
+    query = query.eq('profiles.municipality', municipality).eq('profiles.state', state)
+  }
+
   if (area) query = query.eq('area', area)
   if (userId) query = query.eq('user_id', userId)
-  if (startDate) query = query.gte('created_at', startDate)
-  if (endDate) query = query.lte('created_at', endDate + 'T23:59:59')
+  if (startDate) query = query.gte('created_at', brDayStart(startDate))
+  if (endDate) query = query.lte('created_at', brDayEnd(endDate))
 
   const { data, error } = await query
   if (error) throw error
@@ -100,8 +108,8 @@ export async function getDashboardStats(municipality, startDate, endDate) {
     .select('area, created_at, profiles(secretaria, municipality)')
     .order('created_at', { ascending: true })
 
-  if (startDate) query = query.gte('created_at', startDate)
-  if (endDate) query = query.lte('created_at', endDate + 'T23:59:59')
+  if (startDate) query = query.gte('created_at', brDayStart(startDate))
+  if (endDate) query = query.lte('created_at', brDayEnd(endDate))
 
   const { data, error } = await query
   if (error) throw error
