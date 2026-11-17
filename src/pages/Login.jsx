@@ -5,6 +5,7 @@ import { UFS, SECRETARIAS, OUTRA_SECRETARIA } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
 import { municipalitySeats } from '../services/plans'
 import { isNetworkAuthError } from '../services/auth'
+import { storeCredentials, getSavedCredentials } from '../lib/savedCredentials'
 import logo from '../assets/00_logo_2.png'
 
 const EMPTY_SIGNUP = {
@@ -39,6 +40,20 @@ export default function Login() {
   useEffect(() => {
     if (user) navigate('/home', { replace: true })
   }, [user, navigate])
+
+  // Preenche email/senha salvos no navegador (Chrome/Android, inclusive PWA).
+  // Só preenche — o usuário ainda toca em Entrar.
+  useEffect(() => {
+    if (user) return
+    let cancelled = false
+    getSavedCredentials().then((cred) => {
+      if (cancelled || !cred) return
+      setEmail((cur) => cur || cred.email)
+      setPassword((cur) => cur || cred.password)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSignupChange = (field, value) => setSignup((s) => ({ ...s, [field]: value }))
 
@@ -107,6 +122,7 @@ export default function Login() {
         setEmail(formEmail)
         setPassword(formPassword)
         await login(formEmail, formPassword)
+        storeCredentials(formEmail.trim().toLowerCase(), formPassword) // sem await: não segura a navegação
         navigate('/home', { replace: true })
       }
     } catch (err) {
