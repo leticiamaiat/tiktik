@@ -71,8 +71,14 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Só resolve depois que o perfil está carregado no contexto. Antes, o login
+  // resolvia assim que o Supabase aceitava a senha, a tela ia para /home com
+  // user ainda null e a ProtectedRoute devolvia para /login — o usuário tinha
+  // que entrar duas vezes. (O onAuthStateChange também carrega o perfil; aqui
+  // garantimos que já terminou antes de navegar.)
   const login = async (email, password) => {
     const data = await signIn(email, password)
+    if (data?.user) await loadProfile(data.user)
     return data
   }
 

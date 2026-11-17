@@ -1,7 +1,23 @@
 import { supabase } from '../lib/supabase'
 
+// Falha de rede/servidor (não de senha errada). Comum na primeira requisição
+// do PWA logo depois de abrir: vale uma nova tentativa automática.
+export function isNetworkAuthError(error) {
+  return (
+    error?.name === 'AuthRetryableFetchError' ||
+    error?.status === 0 ||
+    (error?.status >= 500 && error?.status < 600) ||
+    /fetch|network|load failed/i.test(error?.message || '')
+  )
+}
+
 export async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const credentials = { email: (email || '').trim().toLowerCase(), password }
+  let { data, error } = await supabase.auth.signInWithPassword(credentials)
+  if (error && isNetworkAuthError(error)) {
+    await new Promise((r) => setTimeout(r, 800))
+    ;({ data, error } = await supabase.auth.signInWithPassword(credentials))
+  }
   if (error) throw error
   return data
 }

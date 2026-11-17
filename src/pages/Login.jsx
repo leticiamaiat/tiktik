@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { UFS, SECRETARIAS, OUTRA_SECRETARIA } from '../constants/locations'
 import { getMunicipios } from '../services/ibge'
 import { municipalitySeats } from '../services/plans'
+import { isNetworkAuthError } from '../services/auth'
 import logo from '../assets/00_logo_2.png'
 
 const EMPTY_SIGNUP = {
@@ -29,10 +30,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [municipios, setMunicipios] = useState([])
   const [loadingMunicipios, setLoadingMunicipios] = useState(false)
-  const { login, register } = useAuth()
+  const { user, login, register } = useAuth()
   const navigate = useNavigate()
 
   const isSignup = mode === 'signup'
+
+  // Já logado (sessão salva ou login acabou de concluir): vai direto pra home
+  useEffect(() => {
+    if (user) navigate('/home', { replace: true })
+  }, [user, navigate])
 
   const handleSignupChange = (field, value) => setSignup((s) => ({ ...s, [field]: value }))
 
@@ -58,6 +64,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const formEl = e.currentTarget // o React zera currentTarget depois de um await
     setError('')
     setInfo('')
     setLoading(true)
@@ -91,11 +98,23 @@ export default function Login() {
           setSecretariaCustom('')
         }
       } else {
-        await login(email, password)
-        navigate('/home')
+        // Lê direto do formulário: o preenchimento automático do celular
+        // (Chaves do iCloud / Google) às vezes não dispara o onChange e o
+        // estado do React fica vazio ou desatualizado na primeira tentativa.
+        const form = new FormData(formEl)
+        const formEmail = String(form.get('email') || email)
+        const formPassword = String(form.get('password') || password)
+        setEmail(formEmail)
+        setPassword(formPassword)
+        await login(formEmail, formPassword)
+        navigate('/home', { replace: true })
       }
     } catch (err) {
-      setError(isSignup ? (err.message || 'Não foi possível criar a conta.') : 'Email ou senha inválidos.')
+      console.error(isSignup ? 'Cadastro falhou:' : 'Login falhou:', err)
+      if (isSignup) setError(err.message || 'Não foi possível criar a conta.')
+      else if (isNetworkAuthError(err)) setError('Não foi possível conectar. Verifique a internet e tente novamente.')
+      else if (/email not confirmed/i.test(err?.message || '')) setError('Confirme seu email antes de entrar (veja a mensagem que enviamos).')
+      else setError('Email ou senha inválidos.')
     } finally {
       setLoading(false)
     }
