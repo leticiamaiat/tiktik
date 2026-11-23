@@ -35,8 +35,8 @@ const MAX_CARDS = 4
 // Teto de tiks carregados no mapa público (o RPC também limita em 500).
 const PUBLIC_LIMIT = 500
 const FOCUS_ZOOM = 16
-// Níveis de zoom somados ao enquadramento do município
-const MUNICIPALITY_EXTRA_ZOOM = 1
+// Zoom fixo ao abrir centralizado no município
+const MUNICIPALITY_ZOOM = 14
 
 // Atalhos do filtro de tempo: "ultimos N dias", sempre terminando hoje
 const QUICK_RANGES = [
@@ -190,9 +190,9 @@ export default function MapaDeEntregas() {
     fitMunicipality(map, municipalityName, state).then((ok) => {
       if (!ok) return fitTiks()
       // O enquadramento da cidade inteira fica distante demais: depois que o
-      // fitBounds assentar, aproxima um nível mantendo o centro do município.
+      // fitBounds assentar, fixa o zoom mantendo o centro do município.
       window.google.maps.event.addListenerOnce(map, 'idle', () => {
-        map.setZoom(map.getZoom() + MUNICIPALITY_EXTRA_ZOOM)
+        map.setZoom(MUNICIPALITY_ZOOM)
       })
     })
 
