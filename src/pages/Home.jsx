@@ -231,7 +231,7 @@ export default function Home() {
             <GoogleMap
               mapContainerStyle={mapContainerStyle}
               center={userLocation}
-              zoom={11}
+              zoom={13}
               mapTypeId={mapType}
               options={mapOptions}
             >
